@@ -48,6 +48,7 @@ export const PatchChangeSchema = z.object({
 });
 
 export type PatchChange = z.infer<typeof PatchChangeSchema>;
+export type RemediationPatch = PatchChange;
 
 export const AIReasoningOutputSchema = z.object({
   summary: z.string().min(1),

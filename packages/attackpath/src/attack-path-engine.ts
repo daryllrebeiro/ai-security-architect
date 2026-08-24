@@ -22,7 +22,6 @@ export class AttackPathEngine {
       .filter(
         (n) =>
           n.asset.isSensitiveData === true ||
-          n.asset.criticality === 'CRITICAL' ||
           n.asset.type === 'BUCKET' ||
           n.asset.type === 'DATABASE' ||
           n.asset.type === 'SECRET'

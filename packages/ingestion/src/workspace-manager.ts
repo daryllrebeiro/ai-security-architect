@@ -75,6 +75,20 @@ export class DefaultEphemeralWorkspace implements EphemeralWorkspace {
     }
   }
 
+  public async writeSafeFile(relativePath: string, content: string): Promise<void> {
+    const safePath = this.resolveSafePath(relativePath);
+
+    try {
+      await fs.mkdir(path.dirname(safePath), { recursive: true });
+      await fs.writeFile(safePath, content, 'utf-8');
+    } catch (err: unknown) {
+      if (err instanceof SecuritySandboxError) {
+        throw err;
+      }
+      throw new Error(`Failed to write file "${relativePath}": ${(err as Error).message}`);
+    }
+  }
+
   public async listFilesSafe(subDir: string = ''): Promise<string[]> {
     const safeBase = this.resolveSafePath(subDir);
     const results: string[] = [];

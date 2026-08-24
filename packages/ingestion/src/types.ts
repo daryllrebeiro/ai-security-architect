@@ -68,6 +68,7 @@ export interface EphemeralWorkspace {
   workspaceDir: string;
   resolveSafePath(relativePath: string): string;
   readSafeFile(relativePath: string): Promise<string>;
+  writeSafeFile(relativePath: string, content: string): Promise<void>;
   listFilesSafe(subDir?: string): Promise<string[]>;
   cleanup(): Promise<void>;
 }

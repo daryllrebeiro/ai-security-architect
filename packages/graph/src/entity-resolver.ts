@@ -189,24 +189,30 @@ export class EntityResolver {
       }
     }
 
-    // 7. IAM Role -> Sensitive S3 Buckets
+    // 7. IAM Role -> Sensitive S3 Buckets (only if wildcard permission finding exists or explicitly granted)
     for (const role of iamRoles) {
-      for (const bucket of sensitiveBuckets) {
-        const relId = `rel-${role.asset.id}-${bucket.asset.id}`;
-        if (!graph.getEdge(relId)) {
-          graph.addRelationship({
-            id: relId,
-            tenantId,
-            sourceAssetId: role.asset.id,
-            targetAssetId: bucket.asset.id,
-            type: 'CAN_READ',
-            nature: 'INFERRED',
-            confidence: 0.95,
-            metadata: {
-              accessType: 'wildcard-s3-access',
-              description: 'IAM role policy permits reading sensitive S3 bucket',
-            },
-          });
+      const hasWildcardFinding = role.findings.some(
+        (f) => f.category === 'IAM_OVERPRIVILEGE' || f.ruleId === 'IAM-WILDCARD-S3-PERMISSION'
+      );
+
+      if (hasWildcardFinding) {
+        for (const bucket of sensitiveBuckets) {
+          const relId = `rel-${role.asset.id}-${bucket.asset.id}`;
+          if (!graph.getEdge(relId)) {
+            graph.addRelationship({
+              id: relId,
+              tenantId,
+              sourceAssetId: role.asset.id,
+              targetAssetId: bucket.asset.id,
+              type: 'CAN_READ',
+              nature: 'INFERRED',
+              confidence: 0.95,
+              metadata: {
+                accessType: 'wildcard-s3-access',
+                description: 'IAM role policy permits reading sensitive S3 bucket',
+              },
+            });
+          }
         }
       }
     }

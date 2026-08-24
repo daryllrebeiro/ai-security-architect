@@ -111,27 +111,5 @@ export class DiscoveryEngine {
         }
       }
     }
-
-    // 3. Link Wildcard IAM Roles -> Sensitive Buckets
-    const iamRoles = allAssets.filter((a) => a.type === 'IAM_ROLE');
-    const sensitiveBuckets = allAssets.filter((a) => a.type === 'BUCKET' && a.isSensitiveData);
-
-    for (const role of iamRoles) {
-      for (const bucket of sensitiveBuckets) {
-        const relId = `rel-${role.id}-${bucket.id}`;
-        if (!relationships.has(relId)) {
-          relationships.set(relId, {
-            id: relId,
-            tenantId,
-            sourceAssetId: role.id,
-            targetAssetId: bucket.id,
-            type: 'CAN_READ',
-            nature: 'INFERRED',
-            confidence: 0.9,
-            metadata: { description: 'Wildcard IAM policy permits read/write to S3 bucket' },
-          });
-        }
-      }
-    }
   }
 }
