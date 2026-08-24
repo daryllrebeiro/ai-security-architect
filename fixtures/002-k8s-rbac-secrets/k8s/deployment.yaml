@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: prod
+  labels:
+    app: payment-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      serviceAccountName: payment-service-sa
+      containers:
+        - name: payment-api
+          image: enterprise/payment-api:1.4.2
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service-svc
+  namespace: prod
+spec:
+  selector:
+    app: payment-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: payment-service-sa
+  namespace: prod
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/payment-service-role
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: payment-secret-reader
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: payment-secret-binding
+subjects:
+  - kind: ServiceAccount
+    name: payment-service-sa
+    namespace: prod
+roleRef:
+  kind: ClusterRole
+  name: payment-secret-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prod-db-credentials
+  namespace: prod
+type: Opaque
+data:
+  username: YWRtaW4=
+  password: c3VwZXJzZWNyZXRwYXNzd29yZDEyMw==

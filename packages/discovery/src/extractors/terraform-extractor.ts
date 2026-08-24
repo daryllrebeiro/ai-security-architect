@@ -164,8 +164,8 @@ export class TerraformExtractor implements DiscoveryExtractor {
           const bucketAssetId = `asset-s3-${bucketName}`;
 
           const isPII =
-            /PII/i.test(bucketName) ||
-            /CONFIDENTIAL/i.test(blockBody) ||
+            /PII|customer|financial|vault|secret|credential|payment/i.test(bucketName) ||
+            /CONFIDENTIAL|RESTRICTED/i.test(blockBody) ||
             /ContainsSensitive\s*=\s*["']?true["']?/i.test(blockBody);
 
           assets.push({

@@ -72,7 +72,7 @@ export class DiscoveryEngine {
 
     // 1. Link Load Balancers (ALB) -> Services
     const loadBalancers = allAssets.filter((a) => a.type === 'LOAD_BALANCER');
-    const services = allAssets.filter((a) => a.type === 'SERVICE');
+    const services = allAssets.filter((a) => a.type === 'SERVICE' || a.type === 'KUBERNETES_SERVICE');
 
     for (const lb of loadBalancers) {
       for (const svc of services) {

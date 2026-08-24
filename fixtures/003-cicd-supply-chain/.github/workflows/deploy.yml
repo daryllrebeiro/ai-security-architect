@@ -1,0 +1,20 @@
+name: Production Deployment Pipeline
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Process Deploy Command
+        env:
+          AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+          AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        run: |
+          echo "Processing trigger from ${{ github.event.comment.body }}"
+          ./scripts/deploy.sh

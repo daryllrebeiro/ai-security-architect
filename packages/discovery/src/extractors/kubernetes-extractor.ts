@@ -190,7 +190,8 @@ export class KubernetesExtractor implements DiscoveryExtractor {
           });
 
           // Link to matching Pod
-          const targetPodId = `asset-k8s-pod-${name}`;
+          const appLabel = json.spec?.selector?.app;
+          const targetPodId = appLabel ? `asset-k8s-pod-${appLabel}` : `asset-k8s-pod-${name}`;
           relationships.push({
             id: `rel-${svcAssetId}-${targetPodId}`,
             tenantId: context.tenantId,
