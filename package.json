@@ -1,0 +1,22 @@
+{
+  "name": "ai-security-architect",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Enterprise Security Reasoning & Attack-Path Analysis Platform",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run --workspaces --if-present build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . --ext .ts,.tsx"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "zod": "^3.23.8"
+  }
+}
