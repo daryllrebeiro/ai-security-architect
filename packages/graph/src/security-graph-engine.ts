@@ -136,6 +136,29 @@ export class SecurityGraphEngine {
     return true;
   }
 
+  public removeNode(assetId: string): boolean {
+    const node = this.nodes.get(assetId);
+    if (!node) return false;
+
+    // Remove all outgoing edges
+    const outgoing = Array.from(this.outgoingEdges.get(assetId) || []);
+    for (const edgeId of outgoing) {
+      this.removeEdge(edgeId);
+    }
+
+    // Remove all incoming edges
+    const incoming = Array.from(this.incomingEdges.get(assetId) || []);
+    for (const edgeId of incoming) {
+      this.removeEdge(edgeId);
+    }
+
+    this.nodes.delete(assetId);
+    this.outgoingEdges.delete(assetId);
+    this.incomingEdges.delete(assetId);
+
+    return true;
+  }
+
   public attachFinding(finding: Finding): void {
     FindingSchema.parse(finding);
 
