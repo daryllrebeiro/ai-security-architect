@@ -1,0 +1,35 @@
+name: 'AI Security Architect — Attack Path CI Gate'
+description: 'Deterministic security graph analysis, attack path discovery, min-cut choke-point remediation, and closed-loop PR verification'
+author: 'Google Antigravity Team'
+
+inputs:
+  path:
+    description: 'Path to the repository to scan'
+    required: false
+    default: '.'
+  fail-on-risk:
+    description: 'Minimum peak risk score threshold to fail the build (0.0 - 10.0)'
+    required: false
+    default: '8.0'
+  format:
+    description: 'Output format: table, json, or sarif'
+    required: false
+    default: 'sarif'
+  sarif-file:
+    description: 'File path to save SARIF output'
+    required: false
+    default: 'ai-security-architect.sarif'
+
+outputs:
+  peak-risk-score:
+    description: 'Highest calculated risk score among discovered attack paths'
+  critical-paths-count:
+    description: 'Total number of critical exploit chains reaching sensitive crown jewels'
+
+runs:
+  using: 'node20'
+  main: 'packages/cli/dist/index.js'
+
+branding:
+  icon: 'shield'
+  color: 'purple'
