@@ -1,0 +1,49 @@
+{
+  "scenarioId": "001-ssrf-iam-s3",
+  "name": "Public ALB to SSRF to IAM Wildcard S3 Data Access",
+  "expectedAssets": [
+    { "id": "asset-internet", "type": "INTERNET", "isPublic": true },
+    { "id": "asset-alb", "type": "LOAD_BALANCER", "name": "production-public-alb", "isPublic": true },
+    { "id": "asset-order-service", "type": "SERVICE", "name": "order-service" },
+    { "id": "asset-order-webhook-endpoint", "type": "ENDPOINT", "name": "/api/v1/orders/webhook-callback" },
+    { "id": "asset-order-pod", "type": "POD", "name": "order-service-pod" },
+    { "id": "asset-order-sa", "type": "KUBERNETES_SERVICE_ACCOUNT", "name": "order-service-sa" },
+    { "id": "asset-iam-role", "type": "IAM_ROLE", "name": "order-service-role" },
+    { "id": "asset-s3-pii", "type": "BUCKET", "name": "enterprise-production-customer-pii", "isSensitiveData": true, "criticality": "CRITICAL" }
+  ],
+  "expectedRelationships": [
+    { "source": "asset-internet", "target": "asset-alb", "type": "EXPOSES_HTTP" },
+    { "source": "asset-alb", "target": "asset-order-service", "type": "ROUTES_TO" },
+    { "source": "asset-order-service", "target": "asset-order-webhook-endpoint", "type": "CONTAINS" },
+    { "source": "asset-order-service", "target": "asset-order-pod", "type": "DEPLOYED_TO" },
+    { "source": "asset-order-pod", "target": "asset-order-sa", "type": "RUNS_AS" },
+    { "source": "asset-order-sa", "target": "asset-iam-role", "type": "ASSUMES_ROLE" },
+    { "source": "asset-iam-role", "target": "asset-s3-pii", "type": "CAN_READ" }
+  ],
+  "expectedFindings": [
+    {
+      "ruleId": "SSRF-SPRING-URL-CONNECTION",
+      "category": "SSRF",
+      "severity": "HIGH",
+      "assetId": "asset-order-webhook-endpoint"
+    },
+    {
+      "ruleId": "IAM-WILDCARD-S3-PERMISSION",
+      "category": "IAM_OVERPRIVILEGE",
+      "severity": "CRITICAL",
+      "assetId": "asset-iam-role"
+    }
+  ],
+  "expectedAttackPath": {
+    "entryPoint": "asset-internet",
+    "target": "asset-s3-pii",
+    "pathLength": 6,
+    "calculatedRiskScore": 9.2,
+    "optimalChokePoint": {
+      "source": "asset-iam-role",
+      "target": "asset-s3-pii",
+      "relationship": "CAN_READ",
+      "action": "Scope IAM policy from s3:* to specific needed buckets or read-only access with condition keys"
+    }
+  }
+}
