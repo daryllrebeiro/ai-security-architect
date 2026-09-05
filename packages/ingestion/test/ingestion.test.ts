@@ -410,5 +410,30 @@ describe('Phase 1 - Ingestion & Sandboxing Architecture', () => {
       expect(metricsResponse.body).toContain('scan_jobs_created 1');
       api.close();
     });
+
+    it('restores durable jobs from disk and resumes incomplete execution safely', async () => {
+      const storageDir = path.resolve('.tmp-scan-durable-test');
+      const repo = new ScanJobRepository({ storageDir });
+      const job = repo.createJob({
+        tenantId: 'tenant-durable-01',
+        source: {
+          type: 'LOCAL_DIRECTORY',
+          path: path.resolve('fixtures/001-ssrf-iam-s3'),
+        },
+      });
+
+      job.status = 'DISCOVERING';
+      job.progressPercentage = 60;
+      repo.saveJob(job);
+
+      const coordinator = new ScanJobCoordinator({ repository: repo });
+      coordinator.restoreJobs();
+
+      expect(coordinator.getJob(job.id)?.status).toBe('DISCOVERING');
+      const resumed = await coordinator.executeScan(job.id, async () => {});
+      expect(resumed.status).toBe('COMPLETED');
+
+      await fs.rm(storageDir, { recursive: true, force: true });
+    });
   });
 });

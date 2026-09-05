@@ -43,6 +43,23 @@ export class ScanJobRepository {
     return job;
   }
 
+  public listJobs(): ScanJob[] {
+    this.ensureReady();
+    const files = fs.readdirSync(this.storageDir)
+      .filter((file) => file.endsWith('.json'))
+      .filter((file) => file !== 'index.json');
+
+    return files
+      .map((file) => {
+        try {
+          return JSON.parse(fs.readFileSync(path.join(this.storageDir, file), 'utf8')) as ScanJob;
+        } catch {
+          return undefined;
+        }
+      })
+      .filter((job): job is ScanJob => Boolean(job));
+  }
+
   public saveJob(job: ScanJob): void {
     this.ensureReady();
     const filePath = path.join(this.storageDir, `${job.id}.json`);

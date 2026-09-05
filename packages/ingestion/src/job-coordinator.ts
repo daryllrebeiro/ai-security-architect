@@ -16,6 +16,7 @@ import { RepositoryAcquisitionManager } from './repository-acquirer.js';
 export interface ScanJobCoordinatorOptions {
   workspaceManager?: WorkspaceManager;
   acquisitionManager?: RepositoryAcquisitionManager;
+  repository?: ScanJobRepository;
 }
 
 export type ScanJobPipelineHook = (job: ScanJob, workspace: EphemeralWorkspace) => Promise<void>;
@@ -31,7 +32,7 @@ export class ScanJobCoordinator extends EventEmitter {
     super();
     this.workspaceManager = options.workspaceManager ?? new WorkspaceManager();
     this.acquisitionManager = options.acquisitionManager ?? new RepositoryAcquisitionManager();
-    this.repository = new ScanJobRepository();
+    this.repository = options.repository ?? new ScanJobRepository();
   }
 
   public createJob(params: { tenantId: string; source: RepositorySource; metadata?: Record<string, unknown> }): ScanJob {
@@ -67,6 +68,14 @@ export class ScanJobCoordinator extends EventEmitter {
 
   public getJob(jobId: string): ScanJob | undefined {
     return this.jobs.get(jobId);
+  }
+
+  public restoreJobs(): ScanJob[] {
+    const jobs = this.repository.listJobs();
+    for (const job of jobs) {
+      this.jobs.set(job.id, job);
+    }
+    return Array.from(this.jobs.values());
   }
 
   public listJobs(tenantId?: string): ScanJob[] {
