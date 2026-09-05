@@ -11,7 +11,8 @@
     "build": "npm run --workspaces --if-present build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "security:check": "test -z \"$(git grep -nE '(AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' -- ':!package-lock.json' || true)\""
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
