@@ -31,6 +31,12 @@ lerna-debug.log*
 tmp/
 temp/
 .scan-workspaces/
+.scan-job-store/
+
+# Generated web transpilation artifacts
+packages/web/src/**/*.js
+packages/web/test/**/*.js
+packages/web/vite.config.js
 
 # Coverage & Testing
 coverage/
