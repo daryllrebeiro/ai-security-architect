@@ -29,6 +29,7 @@ export const SecurityContextSchema = z.object({
   userId: z.string().min(1),
   userRole: UserRoleSchema,
   permissions: z.array(PermissionSchema).default([]),
+  scopes: z.array(z.string()).default([]),
 });
 
 export type SecurityContext = z.infer<typeof SecurityContextSchema>;

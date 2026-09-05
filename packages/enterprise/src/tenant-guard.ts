@@ -9,7 +9,10 @@ export class TenantIsolationError extends Error {
 
 export class TenantGuard {
   public assertTenantAccess(context: SecurityContext, targetTenantId: string): void {
-    if (context.tenantId !== targetTenantId) {
+    const isSameTenant = context.tenantId === targetTenantId;
+    const hasCrossTenantScope = context.scopes?.includes('cross-tenant:admin') ?? false;
+
+    if (!isSameTenant && !hasCrossTenantScope) {
       throw new TenantIsolationError(context.tenantId, targetTenantId);
     }
   }
@@ -18,7 +21,11 @@ export class TenantGuard {
     context: SecurityContext,
     items: T[]
   ): T[] {
-    return items.filter((item) => item.tenantId === context.tenantId);
+    return items.filter((item) => {
+      const isSameTenant = item.tenantId === context.tenantId;
+      const hasCrossTenantScope = context.scopes?.includes('cross-tenant:admin') ?? false;
+      return isSameTenant || hasCrossTenantScope;
+    });
   }
 
   public enforceTenantScope<T extends { tenantId: string }>(

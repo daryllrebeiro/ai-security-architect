@@ -62,12 +62,18 @@ export class RbacManager {
     }
   }
 
-  public createSecurityContext(tenantId: string, userId: string, role: UserRole): SecurityContext {
+  public createSecurityContext(
+    tenantId: string,
+    userId: string,
+    role: UserRole,
+    scopes: string[] = []
+  ): SecurityContext {
     return {
       tenantId,
       userId,
       userRole: role,
       permissions: this.getPermissionsForRole(role),
+      scopes,
     };
   }
 }

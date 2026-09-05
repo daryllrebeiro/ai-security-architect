@@ -1,6 +1,15 @@
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
-import type { ScanJob, ScanJobStatus, RepositorySource, EphemeralWorkspace } from './types.js';
+import type {
+  ScanJob,
+  ScanJobStatus,
+  RepositorySource,
+  EphemeralWorkspace,
+  ScanJobPipelineStage,
+  ScanJobStageEntry,
+  ScanJobLogEntry,
+} from './types.js';
+import { ScanJobRepository } from './scan-job-repository.js';
 import { WorkspaceManager } from './workspace-manager.js';
 import { RepositoryAcquisitionManager } from './repository-acquirer.js';
 
@@ -16,26 +25,43 @@ export class ScanJobCoordinator extends EventEmitter {
   private readonly workspaces = new Map<string, EphemeralWorkspace>();
   private readonly workspaceManager: WorkspaceManager;
   private readonly acquisitionManager: RepositoryAcquisitionManager;
+  private readonly repository: ScanJobRepository;
 
   constructor(options: ScanJobCoordinatorOptions = {}) {
     super();
     this.workspaceManager = options.workspaceManager ?? new WorkspaceManager();
     this.acquisitionManager = options.acquisitionManager ?? new RepositoryAcquisitionManager();
+    this.repository = new ScanJobRepository();
   }
 
   public createJob(params: { tenantId: string; source: RepositorySource; metadata?: Record<string, unknown> }): ScanJob {
+    const traceId = `scan-${randomUUID()}`;
     const job: ScanJob = {
-      id: `scan-${randomUUID()}`,
+      id: traceId,
       tenantId: params.tenantId,
+      traceId,
       source: params.source,
       status: 'QUEUED',
       createdAt: new Date().toISOString(),
       progressPercentage: 0,
       metadata: params.metadata ?? {},
+      stages: [
+        {
+          name: 'QUEUED',
+          startedAt: new Date().toISOString(),
+          status: 'QUEUED',
+          metadata: {},
+        },
+      ],
     };
 
     this.jobs.set(job.id, job);
+    this.repository.saveJob(job);
     this.emit('job:created', job);
+    this.emit('job:log', this.createLogEntry('job:created', job, {
+      message: `Scan job created for tenant ${job.tenantId}`,
+      details: { source: job.source },
+    }));
     return job;
   }
 
@@ -48,7 +74,12 @@ export class ScanJobCoordinator extends EventEmitter {
     return tenantId ? all.filter((j) => j.tenantId === tenantId) : all;
   }
 
-  public updateJobStatus(jobId: string, status: ScanJobStatus, progressPercentage?: number, error?: string): ScanJob {
+  public updateJobStatus(
+    jobId: string,
+    status: ScanJobStatus,
+    progressPercentage?: number,
+    error?: string
+  ): ScanJob {
     const job = this.jobs.get(jobId);
     if (!job) {
       throw new Error(`Job "${jobId}" not found`);
@@ -70,11 +101,46 @@ export class ScanJobCoordinator extends EventEmitter {
       job.completedAt = new Date().toISOString();
     }
 
+    const stageIndex = job.stages.findIndex((stage) => stage.name === status);
+    const stageEntry: ScanJobStageEntry = {
+      name: status,
+      startedAt: this.getStageStartedAt(job, status),
+      completedAt: new Date().toISOString(),
+      status,
+      error,
+      metadata: {},
+    };
+
+    if (stageIndex >= 0) {
+      job.stages[stageIndex] = stageEntry;
+    } else {
+      job.stages.push(stageEntry);
+    }
+
     this.emit('job:status_changed', job);
+    this.repository.saveJob(job);
+    this.emit('job:log', this.createLogEntry('job:status_changed', job, {
+      message: `Scan job moved to ${status} state`,
+      details: {
+        progressPercentage: job.progressPercentage,
+        error,
+      },
+    }));
     return job;
   }
 
   public async executeScan(jobId: string, pipelineHook?: ScanJobPipelineHook): Promise<ScanJob> {
+    const stages: ScanJobPipelineStage[] = pipelineHook
+      ? [{ name: 'ANALYZING', run: async (job, workspace) => pipelineHook(job, workspace) }]
+      : [];
+
+    return this.executeScanPipeline(jobId, stages);
+  }
+
+  public async executeScanPipeline(
+    jobId: string,
+    stages: ScanJobPipelineStage[] = []
+  ): Promise<ScanJob> {
     const job = this.jobs.get(jobId);
     if (!job) {
       throw new Error(`Job "${jobId}" not found`);
@@ -90,9 +156,11 @@ export class ScanJobCoordinator extends EventEmitter {
       await this.acquisitionManager.acquire(job.source, workspace);
       this.updateJobStatus(jobId, 'SANDBOXING', 30);
 
-      if (pipelineHook) {
-        this.updateJobStatus(jobId, 'ANALYZING', 50);
-        await pipelineHook(job, workspace);
+      for (let index = 0; index < stages.length; index++) {
+        const stage = stages[index];
+        const progress = Math.round(((index + 1) / Math.max(1, stages.length + 1)) * 100);
+        this.updateJobStatus(jobId, stage.name, progress);
+        await stage.run(job, workspace);
       }
 
       this.updateJobStatus(jobId, 'COMPLETED', 100);
@@ -107,5 +175,26 @@ export class ScanJobCoordinator extends EventEmitter {
     }
 
     return this.jobs.get(jobId)!;
+  }
+
+  private getStageStartedAt(job: ScanJob, status: ScanJobStatus): string {
+    const existingStage = job.stages.find((stage) => stage.name === status);
+    return existingStage?.startedAt ?? new Date().toISOString();
+  }
+
+  private createLogEntry(
+    event: string,
+    job: ScanJob,
+    params: { message: string; details?: Record<string, unknown> }
+  ): ScanJobLogEntry {
+    return {
+      event,
+      traceId: job.traceId,
+      tenantId: job.tenantId,
+      status: job.status,
+      timestamp: new Date().toISOString(),
+      message: params.message,
+      details: params.details ?? {},
+    };
   }
 }

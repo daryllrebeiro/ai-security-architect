@@ -59,6 +59,14 @@ describe('Phase 9 - Enterprise Governance, Multi-Tenancy & WORM Audit Logging', 
       );
     });
 
+    it('allows explicit cross-tenant access when the policy grants a matching scope', () => {
+      const scopedCtx = rbac.createSecurityContext('tenant-alpha', 'user-ops', 'SECURITY_ENGINEER', [
+        'cross-tenant:admin',
+      ]);
+
+      expect(() => guard.assertTenantAccess(scopedCtx, 'tenant-beta')).not.toThrow();
+    });
+
     it('filters collections to strictly isolate tenant entities', () => {
       const assets = [
         { id: 'asset-1', tenantId: 'tenant-alpha', name: 'Alpha Asset' },

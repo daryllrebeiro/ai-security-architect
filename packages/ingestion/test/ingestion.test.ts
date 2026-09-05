@@ -8,6 +8,8 @@ import {
   scrubEnvironment,
   RepositoryAcquisitionManager,
   ScanJobCoordinator,
+  ScanJobRepository,
+  ScanJobQueue,
   type EphemeralWorkspace,
 } from '../src/index.js';
 
@@ -153,8 +155,16 @@ describe('Phase 1 - Ingestion & Sandboxing Architecture', () => {
       const fixturePath = path.resolve('fixtures/001-ssrf-iam-s3');
 
       const events: string[] = [];
+      const logEntries: Array<{ event: string; traceId?: string; tenantId?: string }> = [];
       coordinator.on('job:status_changed', (j) => {
         events.push(j.status);
+      });
+      coordinator.on('job:log', (entry) => {
+        logEntries.push({
+          event: entry.event,
+          traceId: entry.traceId,
+          tenantId: entry.tenantId,
+        });
       });
 
       const job = coordinator.createJob({
@@ -166,6 +176,7 @@ describe('Phase 1 - Ingestion & Sandboxing Architecture', () => {
       });
 
       expect(job.status).toBe('QUEUED');
+      expect(job.traceId).toBeDefined();
 
       let analyzedFilesCount = 0;
       const completedJob = await coordinator.executeScan(job.id, async (_j, ws) => {
@@ -175,11 +186,118 @@ describe('Phase 1 - Ingestion & Sandboxing Architecture', () => {
 
       expect(completedJob.status).toBe('COMPLETED');
       expect(completedJob.progressPercentage).toBe(100);
+      expect(completedJob.traceId).toBe(job.traceId);
       expect(analyzedFilesCount).toBeGreaterThanOrEqual(4);
       expect(events).toContain('ACQUIRING');
       expect(events).toContain('SANDBOXING');
       expect(events).toContain('ANALYZING');
       expect(events).toContain('COMPLETED');
+      expect(logEntries.some((entry) => entry.event === 'job:status_changed')).toBe(true);
+      expect(logEntries.some((entry) => entry.traceId === job.traceId)).toBe(true);
+    });
+
+    it('supports staged pipeline execution with explicit stage history', async () => {
+      const coordinator = new ScanJobCoordinator();
+      const job = coordinator.createJob({
+        tenantId: 'tenant-stage-01',
+        source: {
+          type: 'LOCAL_DIRECTORY',
+          path: path.resolve('fixtures/001-ssrf-iam-s3'),
+        },
+      });
+
+      const executedStages: string[] = [];
+      const completedJob = await coordinator.executeScanPipeline(job.id, [
+        {
+          name: 'DISCOVERING',
+          async run(_job, ws) {
+            executedStages.push('DISCOVERING');
+            expect((await ws.listFilesSafe()).length).toBeGreaterThan(0);
+          },
+        },
+        {
+          name: 'ANALYZING',
+          async run(_job, _ws) {
+            executedStages.push('ANALYZING');
+          },
+        },
+      ]);
+
+      expect(completedJob.status).toBe('COMPLETED');
+      expect(completedJob.stages).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'ACQUIRING' }),
+          expect.objectContaining({ name: 'SANDBOXING' }),
+          expect.objectContaining({ name: 'DISCOVERING' }),
+          expect.objectContaining({ name: 'ANALYZING' }),
+          expect.objectContaining({ name: 'COMPLETED' }),
+        ])
+      );
+      expect(executedStages).toEqual(['DISCOVERING', 'ANALYZING']);
+    });
+
+    it('persists scan jobs and graph snapshots to disk for durable recovery', async () => {
+      const storageDir = path.resolve('.tmp-scan-repo-test');
+      const repo = new ScanJobRepository({ storageDir });
+      const job = repo.createJob({
+        tenantId: 'tenant-persist-01',
+        source: {
+          type: 'LOCAL_DIRECTORY',
+          path: path.resolve('fixtures/001-ssrf-iam-s3'),
+        },
+      });
+
+      const snapshot = {
+        tenantId: 'tenant-persist-01',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        nodes: [{ asset: { id: 'asset-1', tenantId: 'tenant-persist-01', type: 'SERVICE', name: 'svc', environment: 'production', isPublic: false, isSensitiveData: false, criticality: 'MEDIUM', metadata: {}, tags: [] }, findings: [] }],
+        edges: [],
+      };
+
+      repo.saveJob(job);
+      repo.saveGraphSnapshot(job.id, snapshot);
+
+      const loaded = repo.getJob(job.id);
+      const loadedSnapshot = repo.getGraphSnapshot(job.id);
+
+      expect(loaded).toBeDefined();
+      expect(loaded?.traceId).toBe(job.traceId);
+      expect(loadedSnapshot).toEqual(snapshot);
+
+      await fs.rm(storageDir, { recursive: true, force: true });
+    });
+
+    it('retries transient failures and drains the queue successfully', async () => {
+      const queue = new ScanJobQueue({ concurrency: 1, maxRetries: 2, retryDelayMs: 0 });
+      const job = {
+        id: 'scan-queue-1',
+        tenantId: 'tenant-q-01',
+        traceId: 'trace-queue-1',
+        source: {
+          type: 'LOCAL_DIRECTORY',
+          path: path.resolve('fixtures/001-ssrf-iam-s3'),
+        },
+        status: 'QUEUED',
+        createdAt: new Date().toISOString(),
+        progressPercentage: 0,
+        metadata: {},
+        stages: [],
+      } as const;
+
+      let attempts = 0;
+      await queue.enqueue(job, async () => {
+        attempts += 1;
+        if (attempts < 2) {
+          throw new Error('temporary queue failure');
+        }
+      });
+
+      await queue.start();
+      await queue.waitForIdle();
+
+      expect(attempts).toBe(2);
+      expect(queue.getJobStatus(job.id)).toBe('COMPLETED');
     });
 
     it('gracefully handles and transitions to FAILED when source is invalid', async () => {
