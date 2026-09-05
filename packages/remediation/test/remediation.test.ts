@@ -15,6 +15,8 @@ import {
   VerificationRunner,
   PullRequestGenerator,
   RemediationCoordinator,
+  PolicyAwareRemediationPlanner,
+  SecurityCommandCenter,
 } from '../src/index.js';
 
 describe('Phase 8 - Closed-Loop Remediation Verification & Automated PR Engine', () => {
@@ -176,5 +178,50 @@ describe('Phase 8 - Closed-Loop Remediation Verification & Automated PR Engine',
     expect(prPayload.bodyMarkdown).toContain('```mermaid');
     expect(prPayload.bodyMarkdown).toContain('VERIFIED CLEAN');
     expect(prPayload.modifiedFiles).toContain('terraform/iam.tf');
+  });
+
+  it('PolicyAwareRemediationPlanner blocks high-risk changes that violate tenant policy', () => {
+    const planner = new PolicyAwareRemediationPlanner();
+
+    const decision = planner.evaluate({
+      tenantId: 'tenant-prod-01',
+      repository: 'enterprise/order-app',
+      attackPathId: 'path-7',
+      riskScore: 9.4,
+      candidatePatches: [
+        {
+          filePath: 'terraform/iam.tf',
+          action: 'MODIFY',
+          diff: '- Action = "s3:*"\n+ Action = ["s3:*", "iam:*"]',
+          description: 'broaden privileges to satisfy access needs',
+        },
+      ],
+      policy: {
+        maxRiskIncreasePercent: 0,
+        requireApprovalForProduction: true,
+        allowedBlastRadius: 'narrow',
+      },
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.reason).toContain('policy');
+    expect(decision.requiresApproval).toBe(true);
+  });
+
+  it('SecurityCommandCenter produces a concise tenant risk summary for operators', () => {
+    const center = new SecurityCommandCenter();
+    const summary = center.summarize({
+      tenantId: 'tenant-prod-01',
+      findings: [
+        { id: 'f-1', severity: 'CRITICAL', category: 'IAM_OVERPRIVILEGE', assetId: 'svc-a' },
+        { id: 'f-2', severity: 'HIGH', category: 'SSRF', assetId: 'svc-a' },
+      ],
+      openRemediations: 2,
+      verifiedRemediations: 1,
+    });
+
+    expect(summary.totalFindings).toBe(2);
+    expect(summary.highRiskCount).toBe(1);
+    expect(summary.remediationStatus).toBe('2 pending, 1 verified');
   });
 });
