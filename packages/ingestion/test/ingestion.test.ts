@@ -11,6 +11,7 @@ import {
   ScanJobRepository,
   ScanJobQueue,
   ScanJobMetrics,
+  ScanJobApi,
   type EphemeralWorkspace,
 } from '../src/index.js';
 
@@ -365,6 +366,49 @@ describe('Phase 1 - Ingestion & Sandboxing Architecture', () => {
       expect(exported).toContain('scan_jobs_completed 1');
       expect(exported).toContain('scan_jobs_success_rate');
       detach();
+    });
+
+    it('exposes tenant-scoped health, metrics, and job endpoints', () => {
+      const coordinator = new ScanJobCoordinator();
+      const metrics = new ScanJobMetrics();
+      const api = new ScanJobApi(coordinator, metrics);
+      const source = {
+        type: 'LOCAL_DIRECTORY' as const,
+        path: path.resolve('fixtures/001-ssrf-iam-s3'),
+      };
+
+      expect(api.handle({ method: 'GET', path: '/health' })).toMatchObject({
+        status: 200,
+        body: { status: 'ok' },
+      });
+
+      const created = api.handle({
+        method: 'POST',
+        path: '/jobs',
+        body: { tenantId: 'tenant-api-01', source },
+      });
+      expect(created.status).toBe(201);
+      const jobId = (created.body as { id: string }).id;
+
+      expect(api.handle({
+        method: 'GET',
+        path: `/jobs/${jobId}`,
+        query: { tenantId: 'tenant-other' },
+      }).status).toBe(404);
+
+      const listed = api.handle({
+        method: 'GET',
+        path: '/jobs',
+        query: { tenantId: 'tenant-api-01' },
+      });
+      expect(listed.status).toBe(200);
+      expect(listed.body).toHaveLength(1);
+
+      const metricsResponse = api.handle({ method: 'GET', path: '/metrics' });
+      expect(metricsResponse.status).toBe(200);
+      expect(metricsResponse.headers['content-type']).toContain('text/plain');
+      expect(metricsResponse.body).toContain('scan_jobs_created 1');
+      api.close();
     });
   });
 });
