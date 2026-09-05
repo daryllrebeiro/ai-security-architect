@@ -27,6 +27,28 @@ export class ScanJobMetrics {
   private active = 0;
   private coordinator?: CoordinatorEvents;
 
+  public toPrometheus(): string {
+    const snapshot = this.snapshot();
+    const lines = [
+      '# HELP scan_jobs_created Total scan jobs created',
+      `scan_jobs_created ${snapshot.created}`,
+      '# HELP scan_jobs_completed Total completed scan jobs',
+      `scan_jobs_completed ${snapshot.completed}`,
+      '# HELP scan_jobs_failed Total failed scan jobs',
+      `scan_jobs_failed ${snapshot.failed}`,
+      '# HELP scan_jobs_cancelled Total cancelled scan jobs',
+      `scan_jobs_cancelled ${snapshot.cancelled}`,
+      '# HELP scan_jobs_active Number of jobs currently active',
+      `scan_jobs_active ${snapshot.active}`,
+      '# HELP scan_jobs_success_rate Success rate for terminal jobs',
+      `scan_jobs_success_rate ${snapshot.successRate}`,
+      '# HELP scan_jobs_average_duration_ms Average scan job duration in milliseconds',
+      `scan_jobs_average_duration_ms ${snapshot.averageDurationMs}`,
+    ];
+
+    return lines.join('\n');
+  }
+
   private readonly onCreated = (job: ScanJob): void => {
     this.created += 1;
     this.active += 1;

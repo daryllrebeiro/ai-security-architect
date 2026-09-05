@@ -343,5 +343,28 @@ describe('Phase 1 - Ingestion & Sandboxing Architecture', () => {
       expect(metrics.snapshot().completed).toBe(1);
       detach();
     });
+
+    it('exports metrics in Prometheus format for external observability sinks', async () => {
+      const coordinator = new ScanJobCoordinator();
+      const metrics = new ScanJobMetrics();
+      const detach = metrics.attach(coordinator);
+      const job = coordinator.createJob({
+        tenantId: 'tenant-metrics-02',
+        source: {
+          type: 'LOCAL_DIRECTORY',
+          path: path.resolve('fixtures/001-ssrf-iam-s3'),
+        },
+      });
+
+      await coordinator.executeScan(job.id);
+      const exported = metrics.toPrometheus();
+
+      expect(exported).toContain('# HELP scan_jobs_created Total scan jobs created');
+      expect(exported).toContain('scan_jobs_created 1');
+      expect(exported).toContain('# HELP scan_jobs_completed Total completed scan jobs');
+      expect(exported).toContain('scan_jobs_completed 1');
+      expect(exported).toContain('scan_jobs_success_rate');
+      detach();
+    });
   });
 });
