@@ -78,6 +78,17 @@ describe('Phase 9 - Enterprise Governance, Multi-Tenancy & WORM Audit Logging', 
       expect(filtered).toHaveLength(2);
       expect(filtered.every((a) => a.tenantId === 'tenant-alpha')).toBe(true);
     });
+
+    it('enforces action-level tenant policy for privileged resource access', () => {
+      const scopedCtx = rbac.createSecurityContext('tenant-alpha', 'user-ops', 'SECURITY_ENGINEER', [
+        'cross-tenant:admin',
+      ]);
+
+      expect(() => guard.assertActionAccess(scopedCtx, 'remediation:apply', 'tenant-beta')).not.toThrow();
+      expect(() => guard.assertActionAccess(tenantACtx, 'remediation:apply', 'tenant-beta')).toThrow(
+        TenantIsolationError
+      );
+    });
   });
 
   describe('Cryptographic WORM Audit Logger & Hash Chaining', () => {
