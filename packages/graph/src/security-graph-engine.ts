@@ -349,6 +349,10 @@ export class SecurityGraphEngine {
     };
   }
 
+  public createIncrementalDelta(before: SecurityGraphEngine): GraphDiff {
+    return SecurityGraphEngine.diff(before, this);
+  }
+
   private updateDegrees(assetId: string): void {
     const node = this.nodes.get(assetId);
     if (!node) return;

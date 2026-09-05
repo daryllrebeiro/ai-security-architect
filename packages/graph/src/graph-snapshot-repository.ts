@@ -53,6 +53,23 @@ export class GraphSnapshotRepository {
     }
   }
 
+  public listSnapshots(tenantId?: string): SecurityGraphSnapshot[] {
+    this.ensureReady();
+    const files = fs.readdirSync(this.storageDir).filter((name) => name.endsWith('.json'));
+
+    return files
+      .map((file) => {
+        try {
+          const snapshot = JSON.parse(fs.readFileSync(path.join(this.storageDir, file), 'utf8')) as SecurityGraphSnapshot;
+          return snapshot;
+        } catch {
+          return undefined;
+        }
+      })
+      .filter((snapshot): snapshot is SecurityGraphSnapshot => Boolean(snapshot))
+      .filter((snapshot) => !tenantId || snapshot.tenantId === tenantId);
+  }
+
   private ensureReady(): void {
     fs.mkdirSync(this.storageDir, { recursive: true });
   }

@@ -186,6 +186,69 @@ describe('Phase 4 - Security Graph Engine & Cross-Layer Entity Resolution', () =
 
       fs.rmSync(storageDir, { recursive: true, force: true });
     });
+
+    it('tracks incremental graph deltas and lists saved snapshots for change consumers', () => {
+      const storageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'graph-delta-'));
+      const repository = new GraphSnapshotRepository({ storageDir });
+      const before = new SecurityGraphEngine('tenant-graph-01');
+      before.addAsset({
+        id: 'svc-a',
+        tenantId: 'tenant-graph-01',
+        type: 'SERVICE',
+        name: 'svc-a',
+        environment: 'production',
+        isPublic: false,
+        isSensitiveData: false,
+        criticality: 'MEDIUM',
+        metadata: {},
+        tags: [],
+      });
+
+      const after = new SecurityGraphEngine('tenant-graph-01');
+      after.addAsset({
+        id: 'svc-a',
+        tenantId: 'tenant-graph-01',
+        type: 'SERVICE',
+        name: 'svc-a',
+        environment: 'production',
+        isPublic: false,
+        isSensitiveData: false,
+        criticality: 'MEDIUM',
+        metadata: {},
+        tags: [],
+      });
+      after.addAsset({
+        id: 'svc-b',
+        tenantId: 'tenant-graph-01',
+        type: 'SERVICE',
+        name: 'svc-b',
+        environment: 'production',
+        isPublic: false,
+        isSensitiveData: false,
+        criticality: 'MEDIUM',
+        metadata: {},
+        tags: [],
+      });
+      after.addRelationship({
+        id: 'rel-1',
+        tenantId: 'tenant-graph-01',
+        sourceAssetId: 'svc-a',
+        targetAssetId: 'svc-b',
+        type: 'CALLS',
+        nature: 'DECLARED',
+        confidence: 0.9,
+        metadata: {},
+      });
+
+      const delta = after.createIncrementalDelta(before);
+      repository.save(after.toSnapshot('source-v2'));
+
+      expect(delta.addedNodes).toHaveLength(1);
+      expect(delta.addedEdges).toHaveLength(1);
+      expect(repository.listSnapshots('tenant-graph-01')).toHaveLength(1);
+
+      fs.rmSync(storageDir, { recursive: true, force: true });
+    });
   });
 
   describe('EntityResolver & Cross-Layer Stitching', () => {
