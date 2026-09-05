@@ -1,4 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   WorkspaceManager,
@@ -10,6 +12,7 @@ import { AnalyzerRunner } from '@ai-security-architect/analyzers';
 import {
   SecurityGraphEngine,
   EntityResolver,
+  GraphSnapshotRepository,
 } from '../src/index.js';
 
 describe('Phase 4 - Security Graph Engine & Cross-Layer Entity Resolution', () => {
@@ -166,6 +169,22 @@ describe('Phase 4 - Security Graph Engine & Cross-Layer Entity Resolution', () =
       const diff = SecurityGraphEngine.diff(graphBefore, graphAfter);
       expect(diff.removedEdges).toHaveLength(1);
       expect(diff.removedEdges[0].id).toBe('edge-1');
+    });
+
+    it('persists snapshots and invalidates stale source versions', () => {
+      const storageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'graph-snapshots-'));
+      const repository = new GraphSnapshotRepository({ storageDir });
+      const graph = new SecurityGraphEngine('tenant-01');
+      const snapshot = graph.toSnapshot('source-v1');
+
+      repository.save(snapshot);
+
+      expect(repository.load({ tenantId: 'tenant-01', sourceFingerprint: 'source-v1' })).toEqual(snapshot);
+      expect(repository.load({ tenantId: 'tenant-01', sourceFingerprint: 'source-v2' })).toBeUndefined();
+      expect(repository.invalidate({ tenantId: 'tenant-01', sourceFingerprint: 'source-v1' })).toBe(true);
+      expect(repository.load({ tenantId: 'tenant-01', sourceFingerprint: 'source-v1' })).toBeUndefined();
+
+      fs.rmSync(storageDir, { recursive: true, force: true });
     });
   });
 

@@ -42,6 +42,7 @@ export interface SecurityGraphSnapshot {
   tenantId: string;
   version: string;
   timestamp: string;
+  sourceFingerprint?: string;
   nodes: {
     asset: Asset;
     findings: Finding[];

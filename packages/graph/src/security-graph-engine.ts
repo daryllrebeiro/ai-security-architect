@@ -279,11 +279,12 @@ export class SecurityGraphEngine {
     return paths;
   }
 
-  public toSnapshot(): SecurityGraphSnapshot {
+  public toSnapshot(sourceFingerprint?: string): SecurityGraphSnapshot {
     return {
       tenantId: this.tenantId,
       version: '1.0.0',
       timestamp: new Date().toISOString(),
+      sourceFingerprint,
       nodes: Array.from(this.nodes.values()).map((n) => ({
         asset: n.asset,
         findings: n.findings,
