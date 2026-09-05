@@ -10,6 +10,7 @@ import {
   ScanJobCoordinator,
   ScanJobRepository,
   ScanJobQueue,
+  ScanJobMetrics,
   type EphemeralWorkspace,
 } from '../src/index.js';
 
@@ -313,6 +314,34 @@ describe('Phase 1 - Ingestion & Sandboxing Architecture', () => {
       const failedJob = await coordinator.executeScan(job.id);
       expect(failedJob.status).toBe('FAILED');
       expect(failedJob.error).toBeDefined();
+    });
+
+    it('records lifecycle metrics and terminal durations without double counting', async () => {
+      const coordinator = new ScanJobCoordinator();
+      const metrics = new ScanJobMetrics();
+      const detach = metrics.attach(coordinator);
+      const job = coordinator.createJob({
+        tenantId: 'tenant-metrics-01',
+        source: {
+          type: 'LOCAL_DIRECTORY',
+          path: path.resolve('fixtures/001-ssrf-iam-s3'),
+        },
+      });
+
+      await coordinator.executeScan(job.id);
+      const snapshot = metrics.snapshot();
+
+      expect(snapshot.created).toBe(1);
+      expect(snapshot.completed).toBe(1);
+      expect(snapshot.failed).toBe(0);
+      expect(snapshot.active).toBe(0);
+      expect(snapshot.terminal).toBe(1);
+      expect(snapshot.successRate).toBe(1);
+      expect(snapshot.averageDurationMs).toBeGreaterThanOrEqual(0);
+
+      coordinator.updateJobStatus(job.id, 'COMPLETED', 100);
+      expect(metrics.snapshot().completed).toBe(1);
+      detach();
     });
   });
 });

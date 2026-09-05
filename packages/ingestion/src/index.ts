@@ -5,3 +5,4 @@ export * from './repository-acquirer.js';
 export * from './job-coordinator.js';
 export * from './scan-job-repository.js';
 export * from './scan-job-queue.js';
+export * from './scan-job-metrics.js';
