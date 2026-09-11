@@ -166,3 +166,68 @@ features:
     defaultRole: "VIEWER"
     enforceEnvironmentIsolation: true
     partialDisclosureEnabled: true
+
+  # Wave G: Trust & Verification Depth
+  # Task G.1: Secrets Lifecycle & Credential Rotation Tracking
+  secretsLifecycle:
+    enabled: false
+    maxAgeDays: 90
+    breachCorrelation:
+      enabled: false
+      serviceUrl: "https://api.pwnedpasswords.com"
+      kAnonymityPrefixLength: 5
+      acceptOutboundHashLookup: false
+
+  # Task G.2: Formal Verification / Policy Proof Layer for Crown-Jewel Paths
+  formalVerification:
+    enabled: false
+    maxConfigurationHops: 10
+    scopeDisclaimerMandatory: true
+
+  # Wave H: External Reach
+  # Task H.1: Continuous Live Validation ("Security Chaos Engineering")
+  liveValidation:
+    enabled: false
+    timeoutMs: 5000
+    rateLimitPerSecond: 2
+    allowedEndpoints: []
+
+  # Task H.2: Third-Party / Vendor Risk Graph Layer
+  vendorRisk:
+    enabled: false
+    enrichDataFlows: true
+    fairLossMultiplierEnabled: true
+
+  # Task H.3: Live Incident Response Correlation (SIEM/EDR Bridge)
+  incidentCorrelation:
+    enabled: false
+    maxTraversalHops: 8
+    exactMatchStrict: true
+
+  # Wave I: Organizational & Business-Process Features
+  # Task I.1: Cyber Insurance Underwriting Report Export
+  insuranceExport:
+    enabled: false
+    draftAssistantMode: true
+
+  # Task I.2: Security Champion Gamification & Engagement Program
+  engagement:
+    enabled: false
+    allowIndividualAttribution: false
+    minRemediationDurationMinutes: 60
+
+  # Task I.3: M&A / Due Diligence Assessment Mode
+  dueDiligence:
+    enabled: false
+    anonymizeDealRoomReport: true
+
+  # Task I.4: Secure Reference Architecture / "Paved Road" Template Generator
+  pavedRoad:
+    enabled: false
+    enforceZeroAttackPathCI: true
+
+  # Task I.5: Orphaned Resource & Stale Access Cleanup
+  orphanDetection:
+    enabled: false
+    dormancyWindowDays: 90
+

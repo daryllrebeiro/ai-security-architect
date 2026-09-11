@@ -41,6 +41,11 @@
     "@ai-security-architect/federation": "*",
     "@ai-security-architect/reporting": "*",
     "@ai-security-architect/access-control": "*",
+    "@ai-security-architect/live-validation": "*",
+    "@ai-security-architect/incident-correlation": "*",
+    "@ai-security-architect/engagement": "*",
+    "@ai-security-architect/due-diligence": "*",
+    "@ai-security-architect/paved-road": "*",
     "zod": "^3.23.8"
   },
   "devDependencies": {

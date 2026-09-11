@@ -17,6 +17,15 @@ import { executeLineage } from './commands/lineage.js';
 import { executeLeastPrivilege } from './commands/least-privilege.js';
 import { executeBriefing } from './commands/briefing.js';
 import { executeWhatIf } from './commands/what-if.js';
+import { executeSecretsLifecycle } from './commands/secrets-lifecycle.js';
+import { executeFormalVerify } from './commands/formal-verify.js';
+import { executeLiveValidate } from './commands/live-validate.js';
+import { executeIncidentCorrelate } from './commands/incident-correlate.js';
+import { executeInsuranceExport } from './commands/insurance-export.js';
+import { executeGamification } from './commands/gamification.js';
+import { executeDueDiligence } from './commands/due-diligence.js';
+import { executeScaffold } from './commands/scaffold.js';
+import { executeOrphanCleanup } from './commands/orphan-cleanup.js';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -263,6 +272,41 @@ async function main() {
       assetId,
       outputFile,
     });
+  } else if (command === 'secrets-lifecycle') {
+    const maxAgeArg = args.find((a) => a.startsWith('--max-age='));
+    const maxAgeDays = maxAgeArg ? parseInt(maxAgeArg.split('=')[1], 10) : 90;
+    await executeSecretsLifecycle({ maxAgeDays });
+  } else if (command === 'formal-verify') {
+    const crownArg = args.find((a) => a.startsWith('--crown-jewel='));
+    const crownJewelId = crownArg ? crownArg.split('=')[1] : undefined;
+    await executeFormalVerify({ crownJewelId });
+  } else if (command === 'live-validate') {
+    const epArg = args.find((a) => a.startsWith('--endpoints='));
+    const endpoints = epArg ? epArg.split('=')[1].split(',') : undefined;
+    await executeLiveValidate({ endpoints });
+  } else if (command === 'incident-correlate') {
+    const alertIdArg = args.find((a) => a.startsWith('--alert-id='));
+    const alertIdentifier = alertIdArg ? alertIdArg.split('=')[1] : undefined;
+    await executeIncidentCorrelate({ alertIdentifier });
+  } else if (command === 'insurance-export') {
+    const tenantArg = args.find((a) => a.startsWith('--tenant='));
+    const tenantId = tenantArg ? tenantArg.split('=')[1] : undefined;
+    await executeInsuranceExport({ tenantId });
+  } else if (command === 'gamification') {
+    const allowInd = args.includes('--individual');
+    await executeGamification({ allowIndividual: allowInd });
+  } else if (command === 'due-diligence') {
+    const targetArg = args.find((a) => a.startsWith('--target='));
+    const targetName = targetArg ? targetArg.split('=')[1] : undefined;
+    const anonymize = args.includes('--anonymize');
+    await executeDueDiligence({ targetName, anonymize });
+  } else if (command === 'scaffold') {
+    const templateName = args[1] || 'public-api-service';
+    await executeScaffold({ templateName });
+  } else if (command === 'orphan-cleanup') {
+    const dormancyArg = args.find((a) => a.startsWith('--dormancy-days='));
+    const dormancyDays = dormancyArg ? parseInt(dormancyArg.split('=')[1], 10) : 90;
+    await executeOrphanCleanup({ dormancyDays });
   } else {
     console.log(`
 AI Security Architect CLI (sec-arch) v1.0.0
@@ -368,6 +412,17 @@ ADVANCED CAPABILITIES (WAVES D, E, F):
                              --edge-type=<type>            Relationship type to sever
                              --asset=<id>                  Asset ID to remove
                              --out=<file>                  Save outcome report to file
+
+ENTERPRISE DEPTH & VERIFICATION (WAVES G, H, I):
+  secrets-lifecycle        Track secret age, overdue rotations, and opt-in k-anonymity breach status
+  formal-verify            Formally prove reachability invariants over crown jewels using SAT/SMT solver
+  live-validate            Empirical non-destructive reachability and TLS/auth validation on allowlist
+  incident-correlate       Correlate SIEM/EDR alert to graph blast radius and choke points
+  insurance-export         Generate cyber insurance underwriting draft report with evidence partitioning
+  gamification             Compute security champion leaderboard and detect anti-gaming churn
+  due-diligence            Run M&A due diligence assessment with deal-room anonymization
+  scaffold <template>      Generate known-good paved-road architecture template (e.g. secure-db-access)
+  orphan-cleanup           Identify dormant resources and stale access with dual security and FinOps waste
 
   help                     Show this help message
 `);
