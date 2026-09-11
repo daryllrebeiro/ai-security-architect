@@ -8,6 +8,9 @@ export interface CliScanOptions {
   repository?: string;
   failOnRiskScore?: number;
   outputFile?: string;
+  withCloud?: boolean;
+  region?: string;
+  silent?: boolean;
 }
 
 export interface CliRemediateOptions {
@@ -15,6 +18,82 @@ export interface CliRemediateOptions {
   pathId?: string;
   apply?: boolean;
   tenantId?: string;
+}
+
+export interface CliAgentOptions {
+  path: string;
+  pathId?: string;
+  autoApprove?: boolean;
+  tenantId?: string;
+  maxIterations?: number;
+}
+
+export interface CliComplianceOptions {
+  path: string;
+  frameworks?: string[];
+  format?: 'markdown' | 'json';
+  outputFile?: string;
+  tenantId?: string;
+}
+
+export interface CliFairOptions {
+  path: string;
+  format?: 'table' | 'json';
+  currency?: string;
+  outputFile?: string;
+  tenantId?: string;
+}
+
+export interface CliRunbookOptions {
+  path: string;
+  pathId?: string;
+  format?: 'markdown' | 'confluence';
+  outputFile?: string;
+  tenantId?: string;
+}
+
+export interface CliQueryOptions {
+  path: string;
+  prompt: string;
+  tenantId?: string;
+}
+
+export interface CliSimulateOptions {
+  path: string;
+  assumedBreachNode?: string;
+  blockEdgeId?: string;
+  tenantId?: string;
+}
+
+export interface CliPolicyOptions {
+  path: string;
+  baseRef?: string;
+  failOnBreach?: boolean;
+  tenantId?: string;
+}
+
+export interface CliDashboardOptions {
+  path: string;
+  outputFile?: string;
+  tenantId?: string;
+  serve?: boolean;
+  port?: number;
+}
+
+export interface CliDiffOptions {
+  basePath: string;
+  headPath: string;
+  format?: 'table' | 'markdown' | 'json';
+  prComment?: boolean;
+  outputFile?: string;
+  tenantId?: string;
+}
+
+export interface CliFederateOptions {
+  manifestPath: string;
+  outputFile?: string;
+  tenantId?: string;
+  sqlitePath?: string;
 }
 
 export interface CliScanResult {

@@ -65,4 +65,17 @@ describe('Phase 11 - CLI Engine, CI/CD Integration & SARIF 2.1.0 Exporter', () =
     expect(prPayload.verification.verified).toBe(true);
     expect(prPayload.verification.riskReductionPercentage).toBe(100);
   });
+
+  it('executeScan with withCloud gracefully handles cloud discovery without credentials', async () => {
+    const result = await executeScan({
+      path: fixturePath,
+      format: 'table',
+      tenantId: 'tenant-cloud-cli',
+      withCloud: true,
+    });
+
+    // Should successfully return static scan results even if cloud discovery is offline
+    expect(result.totalAssets).toBeGreaterThanOrEqual(5);
+    expect(result.attackPaths.length).toBeGreaterThanOrEqual(1);
+  });
 });

@@ -58,3 +58,4 @@ ehthumbs.db
 # Miscellaneous
 .cache
 .turbo
+.sec-arch/

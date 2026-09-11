@@ -1,4 +1,4 @@
-import type { Asset, Relationship, Evidence } from '@ai-security-architect/core';
+import type { Asset, Relationship, Evidence, Finding } from '@ai-security-architect/core';
 import type { EphemeralWorkspace } from '@ai-security-architect/ingestion';
 import type { DiscoveryContext, DiscoveryExtractor, DiscoveryResult } from './types.js';
 import { JavaSpringExtractor } from './extractors/java-spring-extractor.js';
@@ -27,6 +27,8 @@ export class DiscoveryEngine {
     const relationshipsMap = new Map<string, Relationship>();
     const evidenceMap = new Map<string, Evidence>();
 
+    const findingsList: Finding[] = [];
+
     for (const extractor of this.extractors) {
       const isSupported = await extractor.supports(context.workspace, fileList);
       if (!isSupported) {
@@ -47,6 +49,10 @@ export class DiscoveryEngine {
         for (const ev of result.evidence) {
           evidenceMap.set(ev.id, ev);
         }
+
+        if (result.findings) {
+          findingsList.push(...result.findings);
+        }
       } catch (err: unknown) {
         // Continue other extractors on non-fatal extractor error
         console.warn(`[DiscoveryEngine] Extractor "${extractor.name}" failed: ${(err as Error).message}`);
@@ -60,6 +66,7 @@ export class DiscoveryEngine {
       assets: Array.from(assetsMap.values()),
       relationships: Array.from(relationshipsMap.values()),
       evidence: Array.from(evidenceMap.values()),
+      findings: findingsList,
     };
   }
 
@@ -108,6 +115,55 @@ export class DiscoveryEngine {
             confidence: 0.95,
             metadata: { description: 'Microservice runs in Kubernetes Pod' },
           });
+        }
+      }
+    }
+
+    // 3. Link Services/Pods -> Dependencies
+    const dependencies = allAssets.filter((a) => a.type === 'DEPENDENCY');
+    const workloads = services.length > 0 ? services : pods;
+
+    for (const workload of workloads) {
+      for (const dep of dependencies) {
+        const relId = `rel-${workload.id}-${dep.id}`;
+        if (!relationships.has(relId)) {
+          relationships.set(relId, {
+            id: relId,
+            tenantId,
+            sourceAssetId: workload.id,
+            targetAssetId: dep.id,
+            type: 'DEPENDS_ON',
+            nature: 'DECLARED',
+            confidence: 1.0,
+            metadata: { description: 'Workload depends on software package' },
+          });
+        }
+
+        // If the dependency is vulnerable, exploitation allows arbitrary execution within the pod/workload
+        const isVuln =
+          dep.tags?.includes('vulnerable') ||
+          dep.criticality === 'CRITICAL' ||
+          dep.criticality === 'HIGH';
+
+        if (isVuln) {
+          const targetContexts = pods.length > 0 ? pods : [workload];
+          for (const ctx of targetContexts) {
+            const compRelId = `rel-comp-${dep.id}-${ctx.id}`;
+            if (!relationships.has(compRelId)) {
+              relationships.set(compRelId, {
+                id: compRelId,
+                tenantId,
+                sourceAssetId: dep.id,
+                targetAssetId: ctx.id,
+                type: 'COMPROMISES',
+                nature: 'INFERRED',
+                confidence: 0.95,
+                metadata: {
+                  description: `Exploitation of vulnerable dependency ${dep.name} allows code execution within ${ctx.name}`,
+                },
+              });
+            }
+          }
         }
       }
     }

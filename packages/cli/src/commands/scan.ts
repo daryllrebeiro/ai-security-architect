@@ -47,14 +47,57 @@ export async function executeScan(options: CliScanOptions): Promise<CliScanResul
       discoveredAssets: discovery.assets,
     });
 
-    // 4. Resolve Graph
+    // 4. Resolve Graph (incorporating live cloud if requested)
+    let allAssets = [...discovery.assets];
+    let allRelationships = [...discovery.relationships];
+    let allFindings = [...analysis.findings];
+    let allEvidence = [...discovery.evidence, ...analysis.evidence];
+
+    if (options.withCloud) {
+      try {
+        const { AwsConnector, CloudDiscoveryQueue, DriftDetector } = await import('@ai-security-architect/cloud-connectors');
+        const connector = new AwsConnector({ region: options.region });
+        const queue = new CloudDiscoveryQueue();
+        const liveData = await queue.getLiveSnapshot(connector, tenantId);
+
+        const resolverTemp = new EntityResolver();
+        const declaredGraph = resolverTemp.resolve({
+          tenantId,
+          assets: discovery.assets,
+          relationships: discovery.relationships,
+          findings: analysis.findings,
+          evidence: allEvidence,
+        });
+
+        const liveGraph = resolverTemp.resolve({
+          tenantId,
+          assets: liveData.assets,
+          relationships: liveData.relationships,
+          findings: [],
+          evidence: [],
+        });
+
+        const driftDetector = new DriftDetector();
+        const drift = driftDetector.detectDrift(declaredGraph, liveGraph);
+
+        allAssets.push(...liveData.assets);
+        allRelationships.push(...liveData.relationships);
+        allFindings.push(...drift.findings);
+        for (const f of drift.findings) {
+          allEvidence.push(f.evidence);
+        }
+      } catch (cloudErr: any) {
+        console.warn(`[Warning] Live cloud discovery failed: ${cloudErr.message}. Falling back to static code scan.`);
+      }
+    }
+
     const resolver = new EntityResolver();
     const graph = resolver.resolve({
       tenantId,
-      assets: discovery.assets,
-      relationships: discovery.relationships,
-      findings: analysis.findings,
-      evidence: [...discovery.evidence, ...analysis.evidence],
+      assets: allAssets,
+      relationships: allRelationships,
+      findings: allFindings,
+      evidence: allEvidence,
     });
 
     // 5. Traverse Attack Paths & Optimize Choke Points
@@ -76,15 +119,17 @@ export async function executeScan(options: CliScanOptions): Promise<CliScanResul
     };
 
     // Format output
-    const format = options.format || 'table';
-    if (format === 'sarif') {
-      const sarif = new SarifFormatter().format(result);
-      console.log(JSON.stringify(sarif, null, 2));
-    } else if (format === 'json') {
-      console.log(JSON.stringify(result, null, 2));
-    } else {
-      const formatted = new TerminalFormatter().formatScanResult(result);
-      console.log(formatted);
+    if (!options.silent) {
+      const format = options.format || 'table';
+      if (format === 'sarif') {
+        const sarif = new SarifFormatter().format(result);
+        console.log(JSON.stringify(sarif, null, 2));
+      } else if (format === 'json') {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        const formatted = new TerminalFormatter().formatScanResult(result);
+        console.log(formatted);
+      }
     }
 
     if (options.failOnRiskScore && highestRiskScore >= options.failOnRiskScore) {

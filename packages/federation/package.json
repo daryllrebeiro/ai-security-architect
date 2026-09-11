@@ -1,5 +1,5 @@
 {
-  "name": "@ai-security-architect/discovery",
+  "name": "@ai-security-architect/federation",
   "version": "0.1.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -17,13 +17,10 @@
   },
   "dependencies": {
     "@ai-security-architect/core": "*",
-    "@ai-security-architect/ingestion": "*",
-    "yaml": "^2.4.5",
+    "@ai-security-architect/graph": "*",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@ai-security-architect/attackpath": "*",
-    "@ai-security-architect/graph": "*",
     "@types/node": "^22.0.0",
     "typescript": "^5.5.4"
   }

@@ -1,4 +1,4 @@
-import type { Asset, Relationship, Evidence } from '@ai-security-architect/core';
+import type { Asset, Relationship, Evidence, Finding } from '@ai-security-architect/core';
 import type { EphemeralWorkspace } from '@ai-security-architect/ingestion';
 
 export interface DiscoveryContext {
@@ -11,6 +11,7 @@ export interface DiscoveryResult {
   assets: Asset[];
   relationships: Relationship[];
   evidence: Evidence[];
+  findings?: Finding[];
 }
 
 export interface DiscoveryExtractor {

@@ -29,6 +29,16 @@
     "@ai-security-architect/remediation": "*",
     "@ai-security-architect/enterprise": "*",
     "@ai-security-architect/cache": "*",
+    "@ai-security-architect/cloud-connectors": "*",
+    "@ai-security-architect/agent": "*",
+    "@ai-security-architect/lsp-server": "*",
+    "@ai-security-architect/compliance": "*",
+    "@ai-security-architect/policy": "*",
+    "@ai-security-architect/risk-quant": "*",
+    "@ai-security-architect/runbooks": "*",
+    "@ai-security-architect/nl-query": "*",
+    "@ai-security-architect/dashboard": "*",
+    "@ai-security-architect/federation": "*",
     "zod": "^3.23.8"
   },
   "devDependencies": {

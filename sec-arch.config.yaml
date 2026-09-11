@@ -1,0 +1,94 @@
+version: "1.0"
+tenantId: "default-tenant"
+
+features:
+  # Wave A: Graph-Native Capabilities
+  # Task A.1: Attack Path Diffing Between Releases/PRs
+  diff:
+    enabled: false
+    defaultBaseRef: "main"
+    closureReasonAnalysis: true
+    postPrComment: false
+
+  # Task A.2: Natural-Language Query Interface
+  nlQuery:
+    enabled: false
+    groundingVerification: true
+    allowLlmSynthesis: true
+
+  # Task A.3: Purple Team Threat Modeling & Attack Simulation
+  purpleTeam:
+    enabled: false
+    maxHops: 10
+    defaultMode: "BIDIRECTIONAL"
+
+  # Task A.4: Policy-as-Code Guardrails & Security Budgets
+  policy:
+    enabled: false
+    maxNewPathsPerPR: 0
+    maxRiskScorePerPath: 8.5
+    maxCriticalPaths: 0
+    grandfatherExisting: true
+
+  # Wave B: Reporting & Risk Translation
+  # Task B.1: Regulatory & Compliance Framework Mapping
+  compliance:
+    enabled: false
+    defaultFrameworks:
+      - "SOC2"
+      - "PCI-DSS-v4"
+      - "NIST-800-53"
+
+  # Task B.2: Cost-of-Exploit / FAIR Risk Quantification
+  riskQuant:
+    enabled: false
+    currency: "USD"
+    baseForensicCost: 50000
+    baseDowntimeCost: 100000
+    defaultRecordsEstimate: 50000
+
+  # Task B.3: Historical Dashboard & MTTR Burndown
+  dashboard:
+    enabled: false
+    historyDatabase: ".sec-arch/history.db"
+    serverPort: 3000
+
+  # Task B.4: Guided Remediation Playbooks / Runbooks
+  runbooks:
+    enabled: false
+    defaultFormat: "markdown"
+    includeRollback: true
+
+  # Wave C: Structural Expansion
+  # Task C.1: Dependency & Supply-Chain Graph Layer
+  dependencyExtractor:
+    enabled: false
+    ecosystems:
+      - "npm"
+      - "maven"
+      - "pypi"
+
+  # Task C.2: Multi-Repo / Org-Wide Graph Federation
+  federation:
+    enabled: false
+    conflictStrategy: "UNION"
+    strictCanonicalMatching: true
+
+  # Foundation / Hardening Connectors
+  cloudConnectors:
+    enabled: false
+    provider: "AWS"
+    region: "us-east-1"
+    cacheTtlMinutes: 15
+
+  autonomousAgent:
+    enabled: false
+    maxIterations: 5
+    timeoutSeconds: 120
+    maxLlmCalls: 10
+    autoApprove: false
+
+  realTimeLsp:
+    enabled: false
+    debounceMs: 500
+    offlineMode: false

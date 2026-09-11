@@ -15,9 +15,13 @@
     "security:check": "test -z \"$(git grep -nE '(AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' -- ':!package-lock.json' || true)\""
   },
   "devDependencies": {
+    "@types/lru-cache": "^7.10.9",
     "@types/node": "^22.0.0",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5",
     "zod": "^3.23.8"
+  },
+  "dependencies": {
+    "diff": "^9.0.0"
   }
 }
