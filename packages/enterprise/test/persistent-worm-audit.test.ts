@@ -17,6 +17,7 @@ describe('PersistentWormAuditLogger & SQLite Storage Provider', () => {
     userId: 'sec-admin-01',
     userRole: 'SECURITY_ADMIN',
     permissions: ['audit:read', 'audit:verify'],
+    scopes: ['*'],
   };
 
   beforeEach(() => {

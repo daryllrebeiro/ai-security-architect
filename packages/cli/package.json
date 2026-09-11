@@ -39,6 +39,8 @@
     "@ai-security-architect/nl-query": "*",
     "@ai-security-architect/dashboard": "*",
     "@ai-security-architect/federation": "*",
+    "@ai-security-architect/reporting": "*",
+    "@ai-security-architect/access-control": "*",
     "zod": "^3.23.8"
   },
   "devDependencies": {

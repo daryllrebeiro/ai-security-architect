@@ -1,9 +1,14 @@
-import type { PolicyConstraint, PolicyDecision, PolicyEvaluationInput } from './types.js';
+import type {
+  CandidatePatch,
+  PolicyConstraint,
+  PolicyDecision,
+  PolicyEvaluationInput,
+} from './types.js';
 
 export class PolicyAwareRemediationPlanner {
   public evaluate(input: PolicyEvaluationInput): PolicyDecision {
     const patchText = input.candidatePatches
-      .map((patch) => `${patch.filePath}:${patch.diff}`)
+      .map((patch: CandidatePatch) => `${patch.filePath}:${patch.diff}`)
       .join('\n');
 
     const broadensPrivileges = /\+\s*Action\s*=\s*\[.*\*.*\]|\+\s*Action\s*=\s*["']iam:\*["']|\+\s*Action\s*=\s*["']s3:\*["']/.test(patchText);

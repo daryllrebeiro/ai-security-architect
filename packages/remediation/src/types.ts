@@ -45,3 +45,46 @@ export class PatchApplicationError extends Error {
     this.name = 'PatchApplicationError';
   }
 }
+
+export interface CandidatePatch {
+  filePath: string;
+  diff: string;
+  action?: string;
+  description?: string;
+}
+
+export interface PolicyConstraint {
+  requireApprovalForProduction?: boolean;
+  maxRiskIncreasePercent?: number;
+  allowedBlastRadius?: string;
+}
+
+export interface PolicyEvaluationInput {
+  tenantId: string;
+  repository?: string;
+  attackPathId?: string;
+  candidatePatches: CandidatePatch[];
+  policy: PolicyConstraint;
+  riskScore: number;
+}
+
+export interface PolicyDecision {
+  allowed: boolean;
+  reason: string;
+  requiresApproval: boolean;
+}
+
+export interface CommandCenterSummaryInput {
+  tenantId: string;
+  findings: Array<Pick<import('@ai-security-architect/core').Finding, 'id' | 'severity'> & Partial<import('@ai-security-architect/core').Finding>>;
+  openRemediations: number;
+  verifiedRemediations: number;
+}
+
+export interface CommandCenterSummary {
+  tenantId: string;
+  totalFindings: number;
+  highRiskCount: number;
+  remediationStatus: string;
+}
+

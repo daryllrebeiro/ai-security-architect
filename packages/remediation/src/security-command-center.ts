@@ -1,3 +1,4 @@
+import type { Finding } from '@ai-security-architect/core';
 import type { CommandCenterSummary, CommandCenterSummaryInput } from './types.js';
 
 export class SecurityCommandCenter {

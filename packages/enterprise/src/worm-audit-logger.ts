@@ -148,4 +148,5 @@ export class PersistentWormAuditLogger {
 }
 
 // 100% Backward compatibility alias
+export type WormAuditLogger = PersistentWormAuditLogger;
 export const WormAuditLogger = PersistentWormAuditLogger;

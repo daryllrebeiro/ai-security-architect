@@ -124,7 +124,7 @@ export class ScanJobApi {
     return withoutQuery;
   }
 
-  private json(status: number, body: ScanJob | ScanJob[] | { status: string }): ScanJobApiResponse {
+  private json(status: number, body: unknown): ScanJobApiResponse {
     return {
       status,
       headers: { 'content-type': 'application/json; charset=utf-8' },

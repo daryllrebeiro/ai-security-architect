@@ -96,6 +96,48 @@ export interface CliFederateOptions {
   sqlitePath?: string;
 }
 
+export interface CliSbomOptions {
+  path: string;
+  format?: 'cyclonedx' | 'spdx';
+  outputFile?: string;
+  tenantId?: string;
+}
+
+export interface CliLineageOptions {
+  path: string;
+  entryAssetId?: string;
+  direction?: 'forward' | 'reverse';
+  outputFile?: string;
+  tenantId?: string;
+}
+
+export interface CliLeastPrivilegeOptions {
+  path: string;
+  serviceId?: string;
+  roleId?: string;
+  outputFile?: string;
+  tenantId?: string;
+}
+
+export interface CliBriefingOptions {
+  path: string;
+  reportingPeriod?: string;
+  currency?: string;
+  outputFile?: string;
+  tenantId?: string;
+}
+
+export interface CliWhatIfOptions {
+  path: string;
+  action: 'SEVER_EDGE' | 'RESTRICT_PERMISSION' | 'REMOVE_ASSET';
+  sourceAssetId?: string;
+  targetAssetId?: string;
+  edgeType?: string;
+  assetId?: string;
+  outputFile?: string;
+  tenantId?: string;
+}
+
 export interface CliScanResult {
   tenantId: string;
   repository: string;

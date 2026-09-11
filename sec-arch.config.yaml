@@ -92,3 +92,77 @@ features:
     enabled: false
     debounceMs: 500
     offlineMode: false
+
+  # Wave D: Supply Chain & Data Protection
+  # Task D.1: SBOM Generation & Container Lineage
+  sbom:
+    enabled: false
+    format: "cyclonedx"
+    enforceCosignSignature: false
+    allowedRegistries:
+      - "ecr.aws"
+      - "gcr.io"
+      - "docker.io"
+
+  # Task D.2: Sensitive Data Flow & Lineage Tracing
+  dataLineage:
+    enabled: false
+    trackPii: true
+    maxPropagationHops: 8
+
+  # Wave E: Guardrails, Intel & Anomaly Detection
+  # Task E.1: IAM Least-Privilege Recommender
+  leastPrivilege:
+    enabled: false
+    minObservabilityScore: 0.7
+    declineLowConfidence: true
+
+  # Task E.2: Active Threat Intelligence Enrichment
+  threatIntel:
+    enabled: false
+    stalenessThresholdHours: 48
+    enableCisaKev: true
+    enableEpss: true
+
+  # Task E.3: Kubernetes Admission Controller
+  k8sAdmissionController:
+    enabled: false
+    port: 8443
+    failurePolicy: "Ignore"
+    mode: "dry-run"
+
+  # Task E.4: Permission & Infra Change Anomaly Detection
+  anomalyDetection:
+    enabled: false
+    minScansForBaseline: 3
+    zScoreThreshold: 2.5
+    flagWildcardGrant: true
+
+  # Wave F: Collaboration, Modeling & Governance
+  # Task F.1: ChatOps Security Architect Bot
+  chatops:
+    enabled: false
+    platform: "slack"
+    port: 3001
+    allowPatchApprovals: false
+    authorizedUsers: []
+
+  # Task F.2: Executive Risk Briefing Generator
+  executiveBriefing:
+    enabled: false
+    reportingPeriod: "quarterly"
+    currency: "USD"
+    stripTechnicalJargon: true
+
+  # Task F.3: Interactive "What-If" Remediation Sandbox
+  whatIfSandbox:
+    enabled: false
+    maxHops: 10
+    allowDestructiveEvaluation: false
+
+  # Task F.4: Multi-Tenant RBAC & Scoped Views
+  accessControl:
+    enabled: false
+    defaultRole: "VIEWER"
+    enforceEnvironmentIsolation: true
+    partialDisclosureEnabled: true

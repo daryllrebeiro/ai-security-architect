@@ -75,6 +75,7 @@ export class AutonomousRemediationAgent {
       userId: 'autonomous-remediation-agent',
       userRole: 'SECURITY_ADMIN',
       permissions: ['remediation:apply', 'remediation:propose', 'audit:read'],
+      scopes: ['*'],
     };
 
     const recordTransition = (

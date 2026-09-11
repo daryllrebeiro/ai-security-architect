@@ -12,6 +12,11 @@ import { executePolicy } from './commands/policy.js';
 import { executeDashboard } from './commands/dashboard.js';
 import { executeDiff } from './commands/diff.js';
 import { executeFederate } from './commands/federate.js';
+import { executeSbom } from './commands/sbom.js';
+import { executeLineage } from './commands/lineage.js';
+import { executeLeastPrivilege } from './commands/least-privilege.js';
+import { executeBriefing } from './commands/briefing.js';
+import { executeWhatIf } from './commands/what-if.js';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -179,6 +184,85 @@ async function main() {
       outputFile,
       sqlitePath,
     });
+  } else if (command === 'sbom') {
+    const targetPath = args[1] || '.';
+    const formatArg = args.find((a) => a.startsWith('--format='));
+    const format = (formatArg ? formatArg.split('=')[1] : 'cyclonedx') as 'cyclonedx' | 'spdx';
+    const outArg = args.find((a) => a.startsWith('--out='));
+    const outputFile = outArg ? outArg.split('=')[1] : undefined;
+
+    await executeSbom({
+      path: targetPath,
+      format,
+      outputFile,
+    });
+  } else if (command === 'lineage') {
+    const targetPath = args[1] || '.';
+    const dirArg = args.find((a) => a.startsWith('--direction='));
+    const direction = (dirArg ? dirArg.split('=')[1] : 'forward') as 'forward' | 'reverse';
+    const entryArg = args.find((a) => a.startsWith('--entry='));
+    const entryAssetId = entryArg ? entryArg.split('=')[1] : undefined;
+    const outArg = args.find((a) => a.startsWith('--out='));
+    const outputFile = outArg ? outArg.split('=')[1] : undefined;
+
+    await executeLineage({
+      path: targetPath,
+      direction,
+      entryAssetId,
+      outputFile,
+    });
+  } else if (command === 'least-privilege') {
+    const targetPath = args[1] || '.';
+    const roleArg = args.find((a) => a.startsWith('--role='));
+    const roleId = roleArg ? roleArg.split('=')[1] : undefined;
+    const outArg = args.find((a) => a.startsWith('--out='));
+    const outputFile = outArg ? outArg.split('=')[1] : undefined;
+
+    await executeLeastPrivilege({
+      path: targetPath,
+      roleId,
+      outputFile,
+    });
+  } else if (command === 'briefing') {
+    const targetPath = args[1] || '.';
+    const periodArg = args.find((a) => a.startsWith('--period='));
+    const reportingPeriod = periodArg ? periodArg.split('=')[1] : 'Q3 2026';
+    const currArg = args.find((a) => a.startsWith('--currency='));
+    const currency = currArg ? currArg.split('=')[1] : 'USD';
+    const outArg = args.find((a) => a.startsWith('--out='));
+    const outputFile = outArg ? outArg.split('=')[1] : undefined;
+
+    await executeBriefing({
+      path: targetPath,
+      reportingPeriod,
+      currency,
+      outputFile,
+    });
+  } else if (command === 'what-if') {
+    const targetPath = args[1] || '.';
+    const actionArg = args.find((a) => a.startsWith('--action='));
+    const rawAction = actionArg ? actionArg.split('=')[1].toUpperCase().replace(/-/g, '_') : 'SEVER_EDGE';
+    const action = rawAction as 'SEVER_EDGE' | 'RESTRICT_PERMISSION' | 'REMOVE_ASSET';
+    const sourceArg = args.find((a) => a.startsWith('--source='));
+    const sourceAssetId = sourceArg ? sourceArg.split('=')[1] : undefined;
+    const targetArg = args.find((a) => a.startsWith('--target='));
+    const targetAssetId = targetArg ? targetArg.split('=')[1] : undefined;
+    const edgeTypeArg = args.find((a) => a.startsWith('--edge-type='));
+    const edgeType = edgeTypeArg ? edgeTypeArg.split('=')[1] : undefined;
+    const assetArg = args.find((a) => a.startsWith('--asset='));
+    const assetId = assetArg ? assetArg.split('=')[1] : undefined;
+    const outArg = args.find((a) => a.startsWith('--out='));
+    const outputFile = outArg ? outArg.split('=')[1] : undefined;
+
+    await executeWhatIf({
+      path: targetPath,
+      action,
+      sourceAssetId,
+      targetAssetId,
+      edgeType,
+      assetId,
+      outputFile,
+    });
   } else {
     console.log(`
 AI Security Architect CLI (sec-arch) v1.0.0
@@ -216,7 +300,7 @@ ENTERPRISE GOVERNANCE & COMPLIANCE:
   fair <path>              Quantify financial risk exposure using FAIR-aligned model (Annualized Loss Expectancy)
                            Options:
                              --format=[table|json]         Output format (default: table)
-                             --currency=<code >            Currency code (default: USD)
+                             --currency=<code>             Currency code (default: USD)
                              --out=<file>                  Save financial exposure report
 
   runbook <path>           Generate step-by-step incident response and remediation runbook
@@ -252,6 +336,38 @@ ENTERPRISE GOVERNANCE & COMPLIANCE:
                            Options:
                              --out=<file>                  Save merged federated graph JSON
                              --sqlite=<file>               Export to SQLite graph database
+
+ADVANCED CAPABILITIES (WAVES D, E, F):
+  sbom <path>              Generate CycloneDX or SPDX Software Bill of Materials with container lineage
+                           Options:
+                             --format=[cyclonedx|spdx]     SBOM specification format (default: cyclonedx)
+                             --out=<file>                  Save SBOM document to file
+
+  lineage <path>           Trace end-to-end sensitive data flows and classification propagation
+                           Options:
+                             --direction=[forward|reverse] Direction of traversal (default: forward)
+                             --entry=<assetId>             Starting asset ID (default: first sensitive asset)
+                             --out=<file>                  Save data lineage report to file
+
+  least-privilege <path>   Infer static IAM permission usage and generate right-sizing recommendations
+                           Options:
+                             --role=<arn>                  Target IAM role ARN
+                             --out=<file>                  Save policy right-sizing report to file
+
+  briefing <path>          Synthesize 1-page board-level executive risk briefing with honest estimates
+                           Options:
+                             --period=<str>                Reporting period (default: Q3 2026)
+                             --currency=<code>             Monetary currency (default: USD)
+                             --out=<file>                  Save briefing markdown to file
+
+  what-if <path>           Interactive sandbox simulating remediation hypotheses with zero persistent mutation
+                           Options:
+                             --action=[sever-edge|restrict-permission|remove-asset]
+                             --source=<id>                 Source asset ID for edge action
+                             --target=<id>                 Target asset ID for edge action
+                             --edge-type=<type>            Relationship type to sever
+                             --asset=<id>                  Asset ID to remove
+                             --out=<file>                  Save outcome report to file
 
   help                     Show this help message
 `);

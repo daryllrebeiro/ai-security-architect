@@ -108,8 +108,16 @@ export class SecurityGraphEngine {
     return this.store.findAllPaths(startAssetId, targetAssetId, options);
   }
 
-  public toSnapshot(): SecurityGraphSnapshot {
-    return this.store.toSnapshot();
+  public toSnapshot(sourceFingerprint?: string): SecurityGraphSnapshot {
+    const snapshot = this.store.toSnapshot();
+    if (sourceFingerprint) {
+      snapshot.sourceFingerprint = sourceFingerprint;
+    }
+    return snapshot;
+  }
+
+  public createIncrementalDelta(previous: SecurityGraphEngine): GraphDiff {
+    return SecurityGraphEngine.diff(previous, this);
   }
 
   public vacuumInto(targetPath: string): void {
