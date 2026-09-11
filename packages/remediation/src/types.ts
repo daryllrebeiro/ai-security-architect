@@ -33,47 +33,15 @@ export interface RemediationPlan {
   initialFindings?: import('@ai-security-architect/core').Finding[];
 }
 
-export interface PolicyConstraint {
-  maxRiskIncreasePercent: number;
-  requireApprovalForProduction: boolean;
-  allowedBlastRadius: 'narrow' | 'moderate' | 'broad';
-}
-
-export interface PolicyEvaluationInput {
-  tenantId: string;
-  repository: string;
-  attackPathId: string;
-  riskScore: number;
-  candidatePatches: Array<{
-    filePath: string;
-    action: 'MODIFY' | 'CREATE';
-    diff: string;
-    description: string;
-  }>;
-  policy: PolicyConstraint;
-}
-
-export interface PolicyDecision {
-  allowed: boolean;
-  reason: string;
-  requiresApproval: boolean;
-}
-
-export interface CommandCenterSummaryInput {
-  tenantId: string;
-  findings: Array<{
-    id: string;
-    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-    category: string;
-    assetId: string;
-  }>;
-  openRemediations: number;
-  verifiedRemediations: number;
-}
-
-export interface CommandCenterSummary {
-  tenantId: string;
-  totalFindings: number;
-  highRiskCount: number;
-  remediationStatus: string;
+export class PatchApplicationError extends Error {
+  constructor(
+    message: string,
+    public readonly filePath: string,
+    public readonly expectedSnippet?: string,
+    public readonly actualSnippet?: string,
+    public readonly brokenHunkIndex?: number
+  ) {
+    super(`[PatchApplicationError] ${filePath}: ${message}`);
+    this.name = 'PatchApplicationError';
+  }
 }

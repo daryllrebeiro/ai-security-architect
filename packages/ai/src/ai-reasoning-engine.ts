@@ -9,7 +9,8 @@ import type {
 } from './types.js';
 import { ContextBuilder } from './context-builder.js';
 import { PromptGenerator } from './prompt-generator.js';
-import { RuleBasedLLMProvider } from './providers/rule-based-provider.js';
+import { MockLLMProvider } from './providers/mock-provider.js';
+import { GeminiLLMProvider } from './providers/gemini-provider.js';
 
 export class AIReasoningEngine {
   private readonly defaultProvider: LLMProvider;
@@ -21,7 +22,13 @@ export class AIReasoningEngine {
     contextBuilder?: ContextBuilder;
     promptGenerator?: PromptGenerator;
   } = {}) {
-    this.defaultProvider = options.defaultProvider ?? new RuleBasedLLMProvider();
+    if (options.defaultProvider) {
+      this.defaultProvider = options.defaultProvider;
+    } else if (process.env.GEMINI_API_KEY && !process.env.VITEST && process.env.NODE_ENV !== 'test') {
+      this.defaultProvider = new GeminiLLMProvider();
+    } else {
+      this.defaultProvider = new MockLLMProvider();
+    }
     this.contextBuilder = options.contextBuilder ?? new ContextBuilder();
     this.promptGenerator = options.promptGenerator ?? new PromptGenerator();
   }

@@ -16,16 +16,19 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-security-architect/core": "*",
-    "@ai-security-architect/ingestion": "*",
-    "@ai-security-architect/discovery": "*",
-    "@ai-security-architect/analyzers": "*",
-    "@ai-security-architect/graph": "*",
-    "@ai-security-architect/attackpath": "*",
     "@ai-security-architect/ai": "*",
+    "@ai-security-architect/analyzers": "*",
+    "@ai-security-architect/attackpath": "*",
+    "@ai-security-architect/core": "*",
+    "@ai-security-architect/discovery": "*",
+    "@ai-security-architect/graph": "*",
+    "@ai-security-architect/ingestion": "*",
+    "diff": "^9.0.0",
+    "yaml": "^2.9.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/diff": "^7.0.2",
     "@types/node": "^22.0.0",
     "typescript": "^5.5.4"
   }

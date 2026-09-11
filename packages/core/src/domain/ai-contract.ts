@@ -43,7 +43,8 @@ export type AIContextHandoff = z.infer<typeof AIContextHandoffSchema>;
 export const PatchChangeSchema = z.object({
   filePath: z.string().min(1),
   action: z.enum(['MODIFY', 'CREATE', 'DELETE']),
-  diff: z.string(),
+  diff: z.string().optional(),
+  unifiedDiff: z.string().optional(),
   description: z.string(),
 });
 
@@ -54,6 +55,7 @@ export const AIReasoningOutputSchema = z.object({
   summary: z.string().min(1),
   rootCauseAnalysis: z.string().min(1),
   businessImpact: z.string().min(1),
+  reasoningFailed: z.boolean().optional().default(false),
   evidenceReferences: z.array(z.string()),
   recommendedRemediation: z.object({
     description: z.string().min(1),

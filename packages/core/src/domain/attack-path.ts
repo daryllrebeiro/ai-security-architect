@@ -38,6 +38,21 @@ export const ChokePointCandidateSchema = z.object({
 
 export type ChokePointCandidate = z.infer<typeof ChokePointCandidateSchema>;
 
+export const GlobalCutSetSchema = z.object({
+  chokePoints: z.array(ChokePointCandidateSchema),
+  totalCapacityCost: z.number(),
+  pathsEliminatedCount: z.number(),
+  fullySevered: z.boolean(),
+});
+
+export type GlobalCutSet = z.infer<typeof GlobalCutSetSchema>;
+
+export const DiffClosureReasonSchema = z.enum(['remediated', 'asset-removed', 'unknown']);
+export type DiffClosureReason = z.infer<typeof DiffClosureReasonSchema>;
+
+export const PathDiffBucketSchema = z.enum(['introduced', 'closed', 'unchanged', 'severity-changed']);
+export type PathDiffBucket = z.infer<typeof PathDiffBucketSchema>;
+
 export const AttackPathSchema = z.object({
   id: z.string().min(1),
   tenantId: z.string().min(1),
@@ -47,7 +62,17 @@ export const AttackPathSchema = z.object({
   steps: z.array(AttackStepSchema).min(1),
   riskScore: RiskScoreBreakdownSchema,
   recommendedChokePoint: ChokePointCandidateSchema.optional(),
+  recommendedCutSet: z.array(ChokePointCandidateSchema).optional(),
   verifiedEliminated: z.boolean().default(false),
+  fingerprint: z.string().optional(),
+  isSimulation: z.boolean().optional(),
+  simulationContext: z
+    .object({
+      rootAssetId: z.string(),
+      direction: z.enum(['FORWARD', 'REVERSE']),
+      hypothesis: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type AttackPath = z.infer<typeof AttackPathSchema>;

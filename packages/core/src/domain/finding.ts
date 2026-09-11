@@ -13,6 +13,9 @@ export const FindingCategorySchema = z.enum([
   'KUBERNETES_PRIVILEGE_ESCALATION',
   'PROMPT_INJECTION',
   'INSECURE_COMMUNICATION',
+  'UNRESOLVED_REFERENCE',
+  'CLOUD_DRIFT',
+  'SHADOW_RESOURCE',
 ]);
 
 export type FindingCategory = z.infer<typeof FindingCategorySchema>;

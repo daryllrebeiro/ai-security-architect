@@ -11,8 +11,17 @@ export interface CacheEntry<T> {
 export interface CacheStats {
   hits: number;
   misses: number;
+  l1Hits: number;
+  l2Hits: number;
   entryCount: number;
   hitRatePercentage: number;
+}
+
+export interface AstContentCacheOptions {
+  maxMemoryEntries?: number;
+  maxMemoryBytes?: number;
+  diskCacheDir?: string;
+  enableDiskCache?: boolean;
 }
 
 export interface FileAnalysisCacheData {
@@ -33,4 +42,12 @@ export interface IncrementalUpdateResult {
   affectedAssetsCount: number;
   affectedEdgesCount: number;
   durationMs: number;
+}
+
+export interface IncrementalScanSummary {
+  filesScanned: number;
+  filesSkipped: number;
+  cacheHitRate: number;
+  durationMs: number;
+  delta: FileDelta;
 }

@@ -3,12 +3,24 @@ import {
   AuditEntrySchema,
   type AuditEntry,
   type SecurityContext,
+  type AuditStorageProvider,
 } from './types.js';
+import { SqliteAuditStorageProvider } from './sqlite-storage-provider.js';
 
 export const GENESIS_HASH = '0'.repeat(64);
 
-export class WormAuditLogger {
-  private readonly entries: AuditEntry[] = [];
+export interface ChainIntegrityResult {
+  isValid: boolean;
+  brokenAtIndex?: number;
+  reason?: string;
+}
+
+export class PersistentWormAuditLogger {
+  private readonly storage: AuditStorageProvider;
+
+  constructor(storage?: AuditStorageProvider) {
+    this.storage = storage ?? new SqliteAuditStorageProvider(':memory:');
+  }
 
   public log(
     context: SecurityContext,
@@ -16,10 +28,8 @@ export class WormAuditLogger {
     resourceId: string,
     details: Record<string, unknown> = {}
   ): AuditEntry {
-    const tenantEntries = this.entries.filter((e) => e.tenantId === context.tenantId);
-    const previousHash = tenantEntries.length > 0
-      ? tenantEntries[tenantEntries.length - 1].hash
-      : GENESIS_HASH;
+    const lastEntry = this.storage.getLastEntry(context.tenantId);
+    const previousHash = lastEntry ? lastEntry.hash : GENESIS_HASH;
 
     const id = `audit-${crypto.randomUUID()}`;
     const timestamp = new Date().toISOString();
@@ -47,16 +57,16 @@ export class WormAuditLogger {
     };
 
     AuditEntrySchema.parse(entry);
-    this.entries.push(entry);
+    this.storage.append(entry);
     return entry;
   }
 
   public getEntries(context: SecurityContext): AuditEntry[] {
-    return this.entries.filter((e) => e.tenantId === context.tenantId);
+    return this.storage.query(context.tenantId);
   }
 
   public getAllEntries(): AuditEntry[] {
-    return [...this.entries];
+    return this.storage.getAll();
   }
 
   public computeEntryHash(params: {
@@ -81,11 +91,15 @@ export class WormAuditLogger {
     return crypto.createHash('sha256').update(payload, 'utf8').digest('hex');
   }
 
-  public verifyChainIntegrity(entries: AuditEntry[]): {
-    isValid: boolean;
-    brokenAtIndex?: number;
-    reason?: string;
-  } {
+  public verifyChainIntegrity(tenantIdOrEntries: string | AuditEntry[]): ChainIntegrityResult {
+    let entries: AuditEntry[];
+
+    if (typeof tenantIdOrEntries === 'string') {
+      entries = this.storage.query(tenantIdOrEntries);
+    } else {
+      entries = tenantIdOrEntries;
+    }
+
     if (entries.length === 0) {
       return { isValid: true };
     }
@@ -125,4 +139,13 @@ export class WormAuditLogger {
 
     return { isValid: true };
   }
+
+  public close(): void {
+    if (this.storage.close) {
+      this.storage.close();
+    }
+  }
 }
+
+// 100% Backward compatibility alias
+export const WormAuditLogger = PersistentWormAuditLogger;

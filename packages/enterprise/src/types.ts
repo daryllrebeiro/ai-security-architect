@@ -47,3 +47,57 @@ export const AuditEntrySchema = z.object({
 });
 
 export type AuditEntry = z.infer<typeof AuditEntrySchema>;
+
+export interface AuditStorageProvider {
+  append(entry: AuditEntry): void;
+  getLastEntry(tenantId: string): AuditEntry | null;
+  query(tenantId: string, limit?: number, offset?: number): AuditEntry[];
+  getAll(): AuditEntry[];
+  close?(): void;
+}
+
+export const WebhookDestinationTypeSchema = z.enum([
+  'SLACK',
+  'TEAMS',
+  'JIRA',
+  'GENERIC_SIEM',
+  'GITHUB_PR_COMMENT',
+  'GITLAB_PR_COMMENT',
+]);
+export type WebhookDestinationType = z.infer<typeof WebhookDestinationTypeSchema>;
+
+export const WebhookDestinationSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: WebhookDestinationTypeSchema,
+  url: z.string().url(),
+  authToken: z.string().optional(),
+  headers: z.record(z.string()).optional(),
+  enabled: z.boolean().default(true),
+  minRiskThreshold: z.number().min(0).max(10).default(7.0),
+});
+export type WebhookDestination = z.infer<typeof WebhookDestinationSchema>;
+
+export interface DispatchPayload {
+  tenantId: string;
+  repository: string;
+  attackPathId: string;
+  riskScore: number;
+  entryPoint: string;
+  targetAsset: string;
+  stepsSummary: string[];
+  recommendedAction?: string;
+  timestamp?: string;
+  prCommentBody?: string;
+  prNumber?: number;
+}
+
+export interface DispatchResult {
+  destinationId: string;
+  destinationType: WebhookDestinationType;
+  success: boolean;
+  attempts: number;
+  statusCode?: number;
+  error?: string;
+  timestamp: string;
+}

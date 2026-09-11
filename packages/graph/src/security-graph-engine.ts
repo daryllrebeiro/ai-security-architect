@@ -1,240 +1,103 @@
-import {
-  AssetSchema,
-  RelationshipSchema,
-  FindingSchema,
-  type Asset,
-  type Relationship,
-  type Finding,
-} from '@ai-security-architect/core';
+import type { Asset, Relationship, Finding } from '@ai-security-architect/core';
 import type {
   GraphNode,
   GraphEdge,
   GraphTraversalOptions,
   GraphDiff,
   SecurityGraphSnapshot,
+  GraphStore,
+  GraphEngineOptions,
+  CloudDriftResult,
+  CloudDriftConfigItem,
+  CloudDriftDifference,
 } from './types.js';
+import { InMemoryGraphStore } from './stores/in-memory-graph-store.js';
+import { SqliteGraphStore } from './stores/sqlite-graph-store.js';
 
 export class SecurityGraphEngine {
   public readonly tenantId: string;
-  private readonly nodes = new Map<string, GraphNode>();
-  private readonly edges = new Map<string, GraphEdge>();
-  private readonly outgoingEdges = new Map<string, Set<string>>();
-  private readonly incomingEdges = new Map<string, Set<string>>();
+  private store: GraphStore;
+  private readonly options: GraphEngineOptions;
 
-  constructor(tenantId: string = 'default-tenant') {
+  constructor(tenantId: string = 'default-tenant', options: GraphEngineOptions = {}) {
     this.tenantId = tenantId;
+    this.options = options;
+
+    if (options.store) {
+      this.store = options.store;
+    } else if (options.backend === 'sqlite') {
+      this.store = new SqliteGraphStore(tenantId, options.dbPath ?? ':memory:');
+    } else {
+      this.store = new InMemoryGraphStore(tenantId);
+    }
+  }
+
+  public getStore(): GraphStore {
+    return this.store;
   }
 
   public addAsset(asset: Asset): GraphNode {
-    AssetSchema.parse(asset);
-
-    const existing = this.nodes.get(asset.id);
-    if (existing) {
-      existing.asset = asset;
-      return existing;
-    }
-
-    const node: GraphNode = {
-      asset,
-      findings: [],
-      inDegree: 0,
-      outDegree: 0,
-    };
-
-    this.nodes.set(asset.id, node);
-    this.outgoingEdges.set(asset.id, new Set());
-    this.incomingEdges.set(asset.id, new Set());
-
-    return node;
+    this.checkAutoSpill();
+    return this.store.addAsset(asset);
   }
 
   public getNode(assetId: string): GraphNode | undefined {
-    return this.nodes.get(assetId);
+    return this.store.getNode(assetId);
   }
 
   public hasNode(assetId: string): boolean {
-    return this.nodes.has(assetId);
+    return this.store.hasNode(assetId);
   }
 
   public getAllNodes(): GraphNode[] {
-    return Array.from(this.nodes.values());
-  }
-
-  public addRelationship(rel: Relationship): GraphEdge {
-    RelationshipSchema.parse(rel);
-
-    // Ensure source and target nodes exist (or create placeholders)
-    if (!this.nodes.has(rel.sourceAssetId)) {
-      this.addAsset({
-        id: rel.sourceAssetId,
-        tenantId: this.tenantId,
-        type: 'SERVICE',
-        name: rel.sourceAssetId,
-        environment: 'inferred',
-        isPublic: false,
-        isSensitiveData: false,
-        criticality: 'MEDIUM',
-        metadata: {},
-        tags: ['inferred'],
-      });
-    }
-
-    if (!this.nodes.has(rel.targetAssetId)) {
-      this.addAsset({
-        id: rel.targetAssetId,
-        tenantId: this.tenantId,
-        type: 'SERVICE',
-        name: rel.targetAssetId,
-        environment: 'inferred',
-        isPublic: false,
-        isSensitiveData: false,
-        criticality: 'MEDIUM',
-        metadata: {},
-        tags: ['inferred'],
-      });
-    }
-
-    const edge: GraphEdge = {
-      relationship: rel,
-      sourceAssetId: rel.sourceAssetId,
-      targetAssetId: rel.targetAssetId,
-      type: rel.type,
-      confidence: rel.confidence,
-      evidenceRef: rel.evidenceRef,
-    };
-
-    this.edges.set(rel.id, edge);
-
-    this.outgoingEdges.get(rel.sourceAssetId)!.add(rel.id);
-    this.incomingEdges.get(rel.targetAssetId)!.add(rel.id);
-
-    this.updateDegrees(rel.sourceAssetId);
-    this.updateDegrees(rel.targetAssetId);
-
-    return edge;
-  }
-
-  public getEdge(edgeId: string): GraphEdge | undefined {
-    return this.edges.get(edgeId);
-  }
-
-  public getAllEdges(): GraphEdge[] {
-    return Array.from(this.edges.values());
-  }
-
-  public removeEdge(edgeId: string): boolean {
-    const edge = this.edges.get(edgeId);
-    if (!edge) return false;
-
-    this.edges.delete(edgeId);
-    this.outgoingEdges.get(edge.sourceAssetId)?.delete(edgeId);
-    this.incomingEdges.get(edge.targetAssetId)?.delete(edgeId);
-
-    this.updateDegrees(edge.sourceAssetId);
-    this.updateDegrees(edge.targetAssetId);
-
-    return true;
+    return this.store.getAllNodes();
   }
 
   public removeNode(assetId: string): boolean {
-    const node = this.nodes.get(assetId);
-    if (!node) return false;
+    return this.store.removeNode(assetId);
+  }
 
-    // Remove all outgoing edges
-    const outgoing = Array.from(this.outgoingEdges.get(assetId) || []);
-    for (const edgeId of outgoing) {
-      this.removeEdge(edgeId);
-    }
+  public addRelationship(rel: Relationship): GraphEdge {
+    return this.store.addRelationship(rel);
+  }
 
-    // Remove all incoming edges
-    const incoming = Array.from(this.incomingEdges.get(assetId) || []);
-    for (const edgeId of incoming) {
-      this.removeEdge(edgeId);
-    }
+  public getEdge(edgeId: string): GraphEdge | undefined {
+    return this.store.getEdge(edgeId);
+  }
 
-    this.nodes.delete(assetId);
-    this.outgoingEdges.delete(assetId);
-    this.incomingEdges.delete(assetId);
+  public getAllEdges(): GraphEdge[] {
+    return this.store.getAllEdges();
+  }
 
-    return true;
+  public removeEdge(edgeId: string): boolean {
+    return this.store.removeEdge(edgeId);
   }
 
   public attachFinding(finding: Finding): void {
-    FindingSchema.parse(finding);
-
-    const node = this.nodes.get(finding.assetId);
-    if (node) {
-      // Deduplicate finding on node
-      if (!node.findings.some((f) => f.id === finding.id)) {
-        node.findings.push(finding);
-      }
-    } else {
-      // If node doesn't exist yet, create and attach
-      const newNode = this.addAsset({
-        id: finding.assetId,
-        tenantId: this.tenantId,
-        type: 'SERVICE',
-        name: finding.assetId,
-        environment: 'production',
-        isPublic: false,
-        isSensitiveData: false,
-        criticality: 'MEDIUM',
-        metadata: {},
-        tags: [],
-      });
-      newNode.findings.push(finding);
-    }
+    this.store.attachFinding(finding);
   }
 
   public getFindingsForNode(assetId: string): Finding[] {
-    return this.nodes.get(assetId)?.findings ?? [];
+    return this.store.getFindingsForNode(assetId);
   }
 
   public getAllFindings(): Finding[] {
-    const allFindings: Finding[] = [];
-    for (const node of this.nodes.values()) {
-      allFindings.push(...node.findings);
-    }
-    return allFindings;
+    return this.store.getAllFindings();
   }
 
   public getOutgoingEdges(assetId: string): GraphEdge[] {
-    const edgeIds = this.outgoingEdges.get(assetId);
-    if (!edgeIds) return [];
-    return Array.from(edgeIds)
-      .map((id) => this.edges.get(id)!)
-      .filter(Boolean);
+    return this.store.getOutgoingEdges(assetId);
   }
 
   public getIncomingEdges(assetId: string): GraphEdge[] {
-    const edgeIds = this.incomingEdges.get(assetId);
-    if (!edgeIds) return [];
-    return Array.from(edgeIds)
-      .map((id) => this.edges.get(id)!)
-      .filter(Boolean);
+    return this.store.getIncomingEdges(assetId);
   }
 
   public getNeighbors(
     assetId: string,
     direction: 'OUTGOING' | 'INCOMING' | 'BOTH' = 'OUTGOING'
   ): GraphNode[] {
-    const neighborIds = new Set<string>();
-
-    if (direction === 'OUTGOING' || direction === 'BOTH') {
-      for (const edge of this.getOutgoingEdges(assetId)) {
-        neighborIds.add(edge.targetAssetId);
-      }
-    }
-
-    if (direction === 'INCOMING' || direction === 'BOTH') {
-      for (const edge of this.getIncomingEdges(assetId)) {
-        neighborIds.add(edge.sourceAssetId);
-      }
-    }
-
-    return Array.from(neighborIds)
-      .map((id) => this.nodes.get(id)!)
-      .filter(Boolean);
+    return this.store.getNeighbors(assetId, direction);
   }
 
   public findAllPaths(
@@ -242,59 +105,54 @@ export class SecurityGraphEngine {
     targetAssetId: string,
     options: GraphTraversalOptions = {}
   ): GraphEdge[][] {
-    const maxDepth = options.maxDepth ?? 10;
-    const paths: GraphEdge[][] = [];
-    const currentPath: GraphEdge[] = [];
-    const visitedNodes = new Set<string>([startAssetId]);
-
-    const dfs = (currentAssetId: string, depth: number) => {
-      if (currentAssetId === targetAssetId && currentPath.length > 0) {
-        paths.push([...currentPath]);
-        return;
-      }
-
-      if (depth >= maxDepth) return;
-
-      const outgoing = this.getOutgoingEdges(currentAssetId);
-
-      for (const edge of outgoing) {
-        if (options.blockedEdgeIds?.has(edge.relationship.id)) continue;
-        if (options.allowedEdgeTypes && !options.allowedEdgeTypes.includes(edge.type)) continue;
-
-        const nextAssetId = edge.targetAssetId;
-        if (options.blockedAssetIds?.has(nextAssetId)) continue;
-        if (visitedNodes.has(nextAssetId)) continue; // Prevent graph cycles
-
-        visitedNodes.add(nextAssetId);
-        currentPath.push(edge);
-
-        dfs(nextAssetId, depth + 1);
-
-        currentPath.pop();
-        visitedNodes.delete(nextAssetId);
-      }
-    };
-
-    dfs(startAssetId, 0);
-    return paths;
+    return this.store.findAllPaths(startAssetId, targetAssetId, options);
   }
 
-  public toSnapshot(sourceFingerprint?: string): SecurityGraphSnapshot {
-    return {
-      tenantId: this.tenantId,
-      version: '1.0.0',
-      timestamp: new Date().toISOString(),
-      sourceFingerprint,
-      nodes: Array.from(this.nodes.values()).map((n) => ({
-        asset: n.asset,
-        findings: n.findings,
-      })),
-      edges: Array.from(this.edges.values()).map((e) => e.relationship),
-    };
+  public toSnapshot(): SecurityGraphSnapshot {
+    return this.store.toSnapshot();
   }
 
-  public static fromSnapshot(snapshot: SecurityGraphSnapshot): SecurityGraphEngine {
-    const engine = new SecurityGraphEngine(snapshot.tenantId);
+  public vacuumInto(targetPath: string): void {
+    if (this.store instanceof SqliteGraphStore) {
+      this.store.vacuumInto(targetPath);
+    } else {
+      throw new Error('vacuumInto is only supported when using SqliteGraphStore');
+    }
+  }
+
+  public transaction<T>(fn: () => T): T {
+    return this.store.transaction ? this.store.transaction(fn) : fn();
+  }
+
+  public close(): void {
+    this.store.close?.();
+  }
+
+  private checkAutoSpill(): void {
+    if (
+      this.options.backend === 'auto' &&
+      this.store instanceof InMemoryGraphStore &&
+      this.store.getAllNodes().length >= (this.options.nodeThreshold ?? 10_000)
+    ) {
+      const sqliteStore = new SqliteGraphStore(this.tenantId, this.options.dbPath ?? ':memory:');
+      for (const node of this.store.getAllNodes()) {
+        sqliteStore.addAsset(node.asset);
+        for (const finding of node.findings) {
+          sqliteStore.attachFinding(finding);
+        }
+      }
+      for (const edge of this.store.getAllEdges()) {
+        sqliteStore.addRelationship(edge.relationship);
+      }
+      this.store = sqliteStore;
+    }
+  }
+
+  public static fromSnapshot(
+    snapshot: SecurityGraphSnapshot,
+    options?: GraphEngineOptions
+  ): SecurityGraphEngine {
+    const engine = new SecurityGraphEngine(snapshot.tenantId, options);
 
     for (const nodeData of snapshot.nodes) {
       engine.addAsset(nodeData.asset);
@@ -349,14 +207,104 @@ export class SecurityGraphEngine {
     };
   }
 
-  public createIncrementalDelta(before: SecurityGraphEngine): GraphDiff {
-    return SecurityGraphEngine.diff(before, this);
-  }
+  public static diffCloudDrift(
+    declaredGraph: SecurityGraphEngine,
+    liveGraph: SecurityGraphEngine
+  ): CloudDriftResult {
+    const declaredNodes = declaredGraph.getAllNodes();
+    const liveNodes = liveGraph.getAllNodes();
 
-  private updateDegrees(assetId: string): void {
-    const node = this.nodes.get(assetId);
-    if (!node) return;
-    node.outDegree = this.outgoingEdges.get(assetId)?.size ?? 0;
-    node.inDegree = this.incomingEdges.get(assetId)?.size ?? 0;
+    const declaredById = new Map<string, Asset>();
+    const declaredByName = new Map<string, Asset>();
+    for (const node of declaredNodes) {
+      declaredById.set(node.asset.id, node.asset);
+      declaredByName.set(node.asset.name, node.asset);
+    }
+
+    const liveById = new Map<string, Asset>();
+    const liveByName = new Map<string, Asset>();
+    for (const node of liveNodes) {
+      liveById.set(node.asset.id, node.asset);
+      liveByName.set(node.asset.name, node.asset);
+    }
+
+    const onlyInDeclared: Asset[] = [];
+    const onlyInLive: Asset[] = [];
+    const configDrift: CloudDriftConfigItem[] = [];
+
+    // Check declared against live
+    for (const dNode of declaredNodes) {
+      const match = liveById.get(dNode.asset.id) ?? liveByName.get(dNode.asset.name);
+      if (!match) {
+        onlyInDeclared.push(dNode.asset);
+      }
+    }
+
+    // Check live against declared
+    for (const lNode of liveNodes) {
+      const match = declaredById.get(lNode.asset.id) ?? declaredByName.get(lNode.asset.name);
+      if (!match) {
+        onlyInLive.push(lNode.asset);
+      } else {
+        const differences: CloudDriftDifference[] = [];
+        if (Boolean(match.isPublic) !== Boolean(lNode.asset.isPublic)) {
+          differences.push({
+            property: 'isPublic',
+            declaredValue: match.isPublic,
+            liveValue: lNode.asset.isPublic,
+          });
+        }
+        if (match.type !== lNode.asset.type) {
+          differences.push({
+            property: 'type',
+            declaredValue: match.type,
+            liveValue: lNode.asset.type,
+          });
+        }
+        if (Boolean(match.isSensitiveData) !== Boolean(lNode.asset.isSensitiveData)) {
+          differences.push({
+            property: 'isSensitiveData',
+            declaredValue: match.isSensitiveData,
+            liveValue: lNode.asset.isSensitiveData,
+          });
+        }
+
+        if (match.metadata?.publicAccessBlock !== undefined || lNode.asset.metadata?.publicAccessBlock !== undefined) {
+          const dPab = JSON.stringify(match.metadata?.publicAccessBlock);
+          const lPab = JSON.stringify(lNode.asset.metadata?.publicAccessBlock);
+          if (dPab !== lPab) {
+            differences.push({
+              property: 'metadata.publicAccessBlock',
+              declaredValue: match.metadata?.publicAccessBlock,
+              liveValue: lNode.asset.metadata?.publicAccessBlock,
+            });
+          }
+        }
+
+        if (differences.length > 0) {
+          configDrift.push({
+            assetId: match.id,
+            declaredAsset: match,
+            liveAsset: lNode.asset,
+            differences,
+          });
+        }
+      }
+    }
+
+    const declaredEdgeKeys = new Set(
+      declaredGraph.getAllEdges().map((e) => `${e.sourceAssetId}->${e.targetAssetId}:${e.type}`)
+    );
+    const shadowRelationships = liveGraph
+      .getAllEdges()
+      .filter((e) => !declaredEdgeKeys.has(`${e.sourceAssetId}->${e.targetAssetId}:${e.type}`))
+      .map((e) => e.relationship);
+
+    return {
+      onlyInDeclared,
+      onlyInLive,
+      configDrift,
+      shadowRelationships,
+    };
   }
 }

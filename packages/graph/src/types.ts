@@ -49,3 +49,57 @@ export interface SecurityGraphSnapshot {
   }[];
   edges: Relationship[];
 }
+
+export interface GraphStore {
+  readonly tenantId: string;
+  addAsset(asset: Asset): GraphNode;
+  getNode(assetId: string): GraphNode | undefined;
+  hasNode(assetId: string): boolean;
+  getAllNodes(): GraphNode[];
+  removeNode(assetId: string): boolean;
+
+  addRelationship(rel: Relationship): GraphEdge;
+  getEdge(edgeId: string): GraphEdge | undefined;
+  getAllEdges(): GraphEdge[];
+  removeEdge(edgeId: string): boolean;
+
+  attachFinding(finding: Finding): void;
+  getFindingsForNode(assetId: string): Finding[];
+  getAllFindings(): Finding[];
+
+  getOutgoingEdges(assetId: string): GraphEdge[];
+  getIncomingEdges(assetId: string): GraphEdge[];
+  getNeighbors(assetId: string, direction?: 'OUTGOING' | 'INCOMING' | 'BOTH'): GraphNode[];
+
+  findAllPaths(startAssetId: string, targetAssetId: string, options?: GraphTraversalOptions): GraphEdge[][];
+  toSnapshot(): SecurityGraphSnapshot;
+  transaction?<T>(fn: () => T): T;
+  close?(): void;
+}
+
+export interface GraphEngineOptions {
+  backend?: 'memory' | 'sqlite' | 'auto';
+  dbPath?: string;
+  nodeThreshold?: number;
+  store?: GraphStore;
+}
+
+export interface CloudDriftDifference {
+  property: string;
+  declaredValue: any;
+  liveValue: any;
+}
+
+export interface CloudDriftConfigItem {
+  assetId: string;
+  declaredAsset: Asset;
+  liveAsset: Asset;
+  differences: CloudDriftDifference[];
+}
+
+export interface CloudDriftResult {
+  onlyInDeclared: Asset[];
+  onlyInLive: Asset[];
+  configDrift: CloudDriftConfigItem[];
+  shadowRelationships: Relationship[];
+}

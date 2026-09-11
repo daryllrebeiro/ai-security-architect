@@ -12,8 +12,16 @@ export function redactSensitiveData(text: string): string {
     .replace(/ghp_[a-zA-Z0-9]{36}/g, '[REDACTED_GITHUB_TOKEN]')
     // AWS Access Key ID
     .replace(/(?:AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}/g, '[REDACTED_AWS_ACCESS_KEY]')
-    // Generic Private Keys
+    // GCP Service Account JSON private key (with escaped or real newlines)
+    .replace(/"private_key"\s*:\s*"-----BEGIN (?:RSA |EC )?PRIVATE KEY-----(?:\\n|[\r\n\s\S])*?-----END (?:RSA |EC )?PRIVATE KEY-----(?:\\n|[\r\n\s])*"/g, '"private_key": "[REDACTED_GCP_KEY]"')
+    // Generic Private Keys (RSA, OpenSSH, DSA, EC, PGP, etc.)
     .replace(/-----BEGIN (?:RSA |OPENSSH |DSA |EC |PGP )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |OPENSSH |DSA |EC |PGP )?PRIVATE KEY-----/g, '[REDACTED_PRIVATE_KEY]')
+    // JSON Web Tokens (JWT)
+    .replace(/eyJ[a-zA-Z0-9_\-]{10,}\.eyJ[a-zA-Z0-9_\-]{10,}\.[a-zA-Z0-9_\-]{10,}/g, '[REDACTED_JWT_TOKEN]')
+    // Database Connection URIs with credentials
+    .replace(/(?:postgres|postgresql|mysql|mongodb|redis|amqp):\/\/[a-zA-Z0-9_\.\-]+:(?!\[REDACTED_)[^@\s]+@[a-zA-Z0-9_\.\-]+(?::\d+)?\/[a-zA-Z0-9_\-\.\/]*/gi, '$1://[REDACTED_DATABASE_URI]')
+    // Incoming Webhooks (Slack, Teams, Discord, etc.)
+    .replace(/https:\/\/(?:hooks\.slack\.com\/services|discord\.com\/api\/webhooks|outlook\.office\.com\/webhook)\/[a-zA-Z0-9_\-\/]+/gi, '[REDACTED_WEBHOOK_URL]')
     // Passwords / tokens in assignments (avoid overwriting existing [REDACTED_ tags)
     .replace(/((?:password|passwd|pwd|secret|token|api_key)\s*[:=]\s*["'])(?!\[REDACTED_)([^"'\s]{6,})(["'])/gi, '$1[REDACTED_SECRET]$3')
     // Bearer tokens
