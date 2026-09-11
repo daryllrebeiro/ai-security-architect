@@ -6,3 +6,4 @@ export * from './extractors/docker-extractor.js';
 export * from './extractors/dependency-extractor.js';
 export * from './discovery-engine.js';
 export * from './provenance/index.js';
+export * from './secrets-lifecycle/index.js';
