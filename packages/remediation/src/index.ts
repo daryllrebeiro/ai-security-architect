@@ -6,3 +6,4 @@ export * from './remediation-coordinator.js';
 export * from './policy-aware-remediation-planner.js';
 export * from './security-command-center.js';
 export * from './least-privilege/index.js';
+export * from './orphan-detection/index.js';
