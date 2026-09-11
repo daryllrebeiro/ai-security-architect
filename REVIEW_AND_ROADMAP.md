@@ -1,139 +1,139 @@
 # AI Security Architect — Architectural Review & Strategic Roadmap
 
-**Document Version:** 1.0.0  
-**Classification:** Engineering Architecture & Strategic Planning  
-**Target Repository:** `ai-security-architect` (TypeScript Monorepo, 12 Packages)  
+**Document Version:** 2.0.0  
+**Classification:** Enterprise Engineering Architecture & Strategic Roadmap  
+**Target Platform:** `ai-security-architect` (TypeScript / Node.js Monorepo, 26 Packages)  
 **Author:** Principal Software Architect & Staff Systems Engineer  
 
 ---
 
 ## 1. Executive Summary & Health Assessment
 
-### 1.1 Project Context & Value Proposition
-**AI Security Architect** is an enterprise-grade security reasoning and attack-path analysis platform designed to shift application and cloud infrastructure security left. Unlike conventional, siloed security tools—such as SAST scanners (e.g., SonarQube, Semgrep), SCA tools (Snyk), and CSPM/IaC linters (Checkov, tfsec)—this platform builds a unified, cross-layer bipartite **Security Knowledge Graph**. 
-
-By tracing deterministic topological connectivity from untrusted public ingress (Internet/ALBs) through application-layer vulnerabilities (SSRF, SQLi) down to container orchestration (Kubernetes ServiceAccounts) and cloud infrastructure IAM policies (AWS IAM roles, S3 buckets, RDS databases), the platform mathematically proves multi-hop exploitability. It calculates optimal choke points via min-cut optimization and synthesizes closed-loop, verified infrastructure-as-code patches.
-
----
-
-### 1.2 Overall System Maturity Scorecard
+### 1.1 Overall System Maturity
 
 | Dimension | Grade | Rating | Architectural Assessment |
 | :--- | :---: | :---: | :--- |
-| **Architecture & Modularity** | **A-** | **88 / 100** | Exceptional package boundary separation across 12 discrete npm workspaces. Clean domain contracts via Zod in `@ai-security-architect/core`. However, cross-package domain leakages and naive cartesian product heuristics in entity resolution introduce severe scaling hazards. |
-| **Code Quality & Typing** | **B+** | **84 / 100** | Strict TypeScript adherence (`strict: true`, ES Modules). Immutable data structures with cryptographic hashing. Technical debt exists in regex-based AST extraction, brittle string-replace patch application, and hardcoded provider logic. |
-| **Maintainability** | **B** | **78 / 100** | The monorepo layout and clear responsibility segregation make individual packages easy to locate. However, heavy reliance on hardcoded regex rules and absence of formal plugin abstractions for extractors/analyzers hinder third-party extensibility. |
-| **Performance & Scalability** | **C+** | **68 / 100** | In-memory operations are fast for micro-workspaces (<50ms for 1,000 nodes). However, graph traversal is single-threaded DFS ($O(V+E)$ with cycle detection, but explosive on dense graphs), and cache/audit storage resides entirely in non-persistent Node.js process memory without eviction limits (OOM hazard). |
-| **Test Coverage & Verifiability** | **A** | **92 / 100** | 100% pass rate across 54 comprehensive unit and multi-hop E2E benchmark scenarios (`001-ssrf-iam-s3`, `002-k8s-vault`, `003-cicd-supply-chain`). High deterministic confidence, though integration tests rely on localized mocks rather than live containerized infrastructure. |
+| **Architecture & Modularity** | **A** | **93 / 100** | Strict separation of concerns across 26 bounded npm packages. Strong unidirectional DAG dependency flow (`cli` $\to$ `remediation` $\to$ `ai` $\to$ `attackpath` $\to$ `graph` $\to$ `analyzers` $\to$ `discovery` $\to$ `ingestion` $\to$ `core`). Additive-only Zod runtime schemas in `@ai-security-architect/core`. |
+| **Code Quality & Typing** | **A-** | **90 / 100** | Pure ESM (`"type": "module"`), strict TypeScript (`strict: true`, zero emit errors across 26 packages), zero `any` in core domains, cryptographically verifiable evidence references (`SHA-256`), and immutable audit records. |
+| **Maintainability** | **B+** | **86 / 100** | Clean, predictable file layout and module contracts. Modular extension points established across Waves A–F. Minor technical debt remains in legacy regex heuristics inside older AST analyzers (`terraform-extractor.ts`). |
+| **Performance & Scalability** | **B** | **82 / 100** | Fast in-memory engine (<50ms for 1,000 nodes) with an automatic spillover SQLite tier (`SqliteGraphStore`). Single-threaded DFS traversal on very dense graphs ($>50,000$ edges) and synchronous file scans present throughput limits under massive multi-repo CI loads. |
+| **Testing & Quality Assurance** | **A+** | **96 / 100** | 48 test suites passing 215 tests with 100% deterministic reproducibility under 14 seconds via Vitest. Synthetic fixtures cover multi-hop exploit scenarios (`001-ssrf-iam-s3`, `002-k8s-vault`, `003-cicd-supply-chain`), admission webhooks, and ChatOps HMAC signing. |
 
 ---
 
-### 1.3 Architectural Philosophy: Core Strengths vs. Fundamental Structural Risks
+### 1.2 Architectural Philosophy
 
 ```
-                                  CURRENT ARCHITECTURE (MVP / BETA)
-┌────────────────┐     ┌────────────────┐     ┌────────────────┐     ┌────────────────┐
-│ Ingestion &    │ ──> │ Extractors &   │ ──> │ Entity         │ ──> │ Attack Path &  │
-│ Sandboxing     │     │ Analyzers      │     │ Resolver       │     │ Min-Cut Engine │
-│ (Ephemeral FS) │     │ (Regex/YAML)   │     │ (O(N*M) Heur.) │     │ (In-Memory DFS)│
-└────────────────┘     └────────────────┘     └────────────────┘     └────────────────┘
-                                                                             │
-                                                                             ▼
-┌────────────────┐     ┌────────────────┐     ┌────────────────┐     ┌────────────────┐
-│ WORM Logger    │     │ In-Memory AST  │     │ Patch Applier  │ <── │ AI Engine      │
-│ (In-Mem Array) │     │ Cache (No LRU) │     │ (Regex Sub)    │     │ (Rule-Based M.)│
-└────────────────┘     └────────────────┘     └────────────────┘     └────────────────┘
+                              PLATFORM TOPOLOGY (26 WORKSPACES)
+ ┌──────────────────────────────────────────────────────────────────────────────────┐
+ │                                   CLIENT SURFACES                                │
+ │   CLI (`bin.ts`)    │    Real-Time LSP Server    │    ChatOps (Slack / Teams)    │
+ └─────────┬───────────────────────────┬───────────────────────────┬────────────────┘
+           │                           │                           │
+ ┌─────────▼───────────────────────────▼───────────────────────────▼────────────────┐
+ │                            GOVERNANCE & EXECUTION                                │
+ │   Policy Budgets    │   FAIR Risk Quant  │   Compliance (SOC2/PCI) │ Briefings   │
+ │   K8s Admission Webhook (Fail-Open)      │   Multi-Tenant RBAC & Scoped Views    │
+ └─────────┬───────────────────────────┬───────────────────────────┬────────────────┘
+           │                           │                           │
+ ┌─────────▼───────────────────────────▼───────────────────────────▼────────────────┐
+ │                              REASONING ENGINE                                    │
+ │   Attack Path Traverser (Min-Cut)   │   Interactive What-If Sandbox (In-Memory)  │
+ │   Autonomous Remediation Agent      │   Gemini LLM Provider (Grounding Discipline)│
+ └─────────┬───────────────────────────┬───────────────────────────┬────────────────┘
+           │                           │                           │
+ ┌─────────▼───────────────────────────▼───────────────────────────▼────────────────┐
+ │                           GRAPH & KNOWLEDGE FOUNDATION                           │
+ │   Security Graph Engine (Memory / SQLite)│   Data Lineage & Sensitivity Propagator│
+ │   Anomaly Detector & Baseline Store      │   Graph Federation & Cross-Repo Sync  │
+ └─────────┬───────────────────────────┬───────────────────────────┬────────────────┘
+           │                           │                           │
+ ┌─────────▼───────────────────────────▼───────────────────────────▼────────────────┐
+ │                            INGESTION & DISCOVERY                                 │
+ │   Ephemeral Workspaces (Jail Safe)  │   SBOM (CycloneDX/SPDX) & Container Lineage│
+ │   AST Analyzers (IaC, Code, CI/CD)  │   CISA KEV / EPSS Threat Intelligence Cache│
+ └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Core Strengths
-1. **Canonical Schema Contract (`@ai-security-architect/core`)**: Unifying all entities (`Asset`, `Relationship`, `Finding`, `Evidence`, `AttackPath`) under strict Zod runtime schemas ensures runtime type safety and strict schema validation across package boundaries.
-2. **Defensive Ingestion Isolation (`@ai-security-architect/ingestion`)**: Robust path traversal protection (`resolveSafePath` rejecting `../` escapes and symlink jailbreaks) paired with parent environment sanitization (`AWS_*`, `GITHUB_*`, `DATABASE_*`) prevents malicious repositories from hijacking the runner.
-3. **Deterministic Evidence Lineage**: Every finding and relationship is cryptographically grounded with SHA-256 evidence digests (`ev-<type>-<hash>-<line>`), ensuring that AI reasoning cannot hallucinate file paths or line numbers.
-4. **Closed-Loop Verification Philosophy (`@ai-security-architect/remediation`)**: Rather than blindly proposing code diffs, the remediation pipeline applies patches in a dry-run ephemeral workspace, re-runs discovery and graph engines, and mathematically verifies a 100% reduction in attack paths before generating PR artifacts.
+#### Core Architectural Strengths
+1. **Canonical Schema Contract (`@ai-security-architect/core`)**: Every platform entity (`Asset`, `Relationship`, `Finding`, `Evidence`, `AttackPath`, `AttackStep`) is enforced at runtime via strict Zod schemas. Extensions across Waves A–F are strictly additive, preventing regressions.
+2. **Deterministic Evidence Lineage**: Every finding, relationship, and data flow binding anchors to a cryptographic SHA-256 evidence snippet (`EvidenceSchema`), ensuring that downstream LLM reasoning and rule generation are rooted in real code.
+3. **Closed-Loop Verification Philosophy**: Remediations are never suggested blindly. The platform applies patches into an isolated ephemeral sandbox, executes full discovery and graph rebuilds, and mathematically confirms the elimination of attack paths prior to presenting results or creating PRs.
+4. **Resilient Perimeter Guardrails**: Persistent and daemon services (the Kubernetes Admission Controller and ChatOps Bot) feature explicit STRIDE threat models, HMAC-SHA256 signature verification, replay protection, and fail-open circuit breakers.
+5. **Zero Persistent Mutation in Sandbox Modeling**: The "What-If" engine (`@ai-security-architect/attackpath/what-if`) clones graph state into pure in-memory replicas, enabling operators to test destructive severing hypotheses without dirtying the SQLite graph store or scan history.
 
 #### Fundamental Structural Risks
-1. **Cartesian Explosion in Heuristic Entity Resolution (`@ai-security-architect/graph`)**: `EntityResolver.resolveCrossLayerChains` connects *all* load balancers to *all* services, *all* services to *all* pods, and falls back to `serviceAccounts[0]` if service account metadata is missing. In enterprise mono-repos with hundreds of services, this produces an exponential number of spurious phantom paths.
-2. **Brittle Regex-Based AST & Patching Engine**: Terraform extraction in `TerraformExtractor` and patch replacement in `PatchApplier` rely on custom regular expressions. They fail on nested HCL blocks, Terraform modules, dynamic blocks, multi-line unified diffs, and formatting variations.
-3. **Volatile In-Memory Enterprise Foundations (`@ai-security-architect/enterprise` & `cache`)**: Both the "WORM" Audit Logger and the AST cache reside in volatile process heap memory (`AuditEntry[]` and `Map<string, CacheEntry>`). A runner restart destroys audit trails, violating compliance standards (SOC 2, ISO 27001), and creates unbounded memory leak risks.
-4. **Mocked Rule-Based AI Engine**: `AIReasoningEngine` currently relies on `RuleBasedLLMProvider` hardcoded to Scenario 001. For any general security scenario outside of the fixture demo, it generates empty remediation patches (`patches: []`).
+1. **Single-Node SQLite Write Concurrency**: While SQLite handles scan history and graph persistence gracefully for CLI runs, multiple parallel scans in high-concurrency enterprise pipelines risk `SQLITE_BUSY` database lock contention unless backed by a distributed persistence layer.
+2. **Combinatorial Path Explosion on Dense Graphs**: Graph traversal uses recursive DFS with cycle detection (`visitedNodes: Set<string>`). On enterprise graphs with dense hub-and-spoke topologies (e.g., shared VPC transit gateways or wildcard IAM roles), the number of candidate paths grows exponentially without aggressive heuristic path pruning.
+3. **Heuristic Static Analysis Fallbacks**: AST extractors for Terraform and CloudFormation still partially rely on regular expressions for complex dynamic blocks and nested module references.
 
 ---
 
-### 1.4 Primary Bottlenecks Hindering Stability & Scale
+### 1.3 Primary Bottlenecks
 
-1. **Resolution Combinatorics (False-Positive Attack Paths)**:
-   - *Constraint*: Unscoped entity linking in `entity-resolver.ts` creates $O(N_{ALB} \times N_{SVC} \times N_{POD} \times N_{SA} \times N_{IAM} \times N_{BUCKET})$ potential edges.
-   - *Impact*: Massive false-positive blast radius; developers will lose trust in the tool if unrelated services appear in attack chains.
-2. **Single-Process Volatile State (Lack of Persistent Storage Engine)**:
-   - *Constraint*: No database backing (PostgreSQL, SQLite, or Neo4j).
-   - *Impact*: Inability to run distributed scans, retain historical vulnerability posture, or maintain tamper-evident audit records across process lifecycles.
-3. **Heuristic Min-Cut Approximation (Single-Edge Greedy Selection)**:
-   - *Constraint*: `MinCutOptimizer` performs edge frequency counting rather than computing minimum cut sets across residual flow networks.
-   - *Impact*: For redundant multi-path architectures (e.g., dual ingress or secondary IAM roles), severing a single edge does not eliminate the exploit path, resulting in incomplete remediation guidance.
+1. **Graph Traversal Combinatorics on Hub-and-Spoke Nodes**:
+   - *Constraint*: When an asset possesses high in-degree and high out-degree (e.g., an IAM role assumed by 50 pods granting access to 40 data stores), naive DFS traversal computes thousands of redundant paths sharing identical sub-paths.
+   - *Impact*: Increased scan latency and memory consumption during organizational graph federation.
+2. **Synchronous Local File Ingestion**:
+   - *Constraint*: Local disk reads in `EphemeralWorkspace` execute serially across thousands of source files without stream-based parallel worker threads.
+   - *Impact*: I/O wait times dominate initial discovery on repositories exceeding 100,000 LOC.
+3. **In-Memory Thread-Bound LLM Grounding**:
+   - *Constraint*: Natural language query translation and briefing synthesis run synchronously on the main Node.js event loop.
+   - *Impact*: Heavy prompt serialization blocks event-driven subsystems like the ChatOps HTTP listener and Kubernetes webhook during multi-tenant bursts.
 
 ---
 
 ## 2. In-Depth Engineering Review
 
 ### 2.1 Design Patterns & Modularity
-- **Cohesion & Coupling**: Package separation across the 12 workspaces is exemplary. The dependency flow (`cli` $\to$ `remediation` $\to$ `ai` $\to$ `attackpath` $\to$ `graph` $\to$ `analyzers` $\to$ `discovery` $\to$ `ingestion` $\to$ `core`) forms a strict directed acyclic dependency graph (DAG) without circular package references.
+- **Cohesion & Coupling**: Package decoupling across 26 workspaces is cleanly maintained. High-level consumer packages (`cli`, `reporting`, `chatops`) never reach directly into low-level internals; all interactions traverse public API exports.
+- **Domain Separation**:
+  - Domain primitives in `core` remain isolated from execution logic.
+  - The security graph (`@ai-security-architect/graph`) manages topology and state without knowing whether the consumer is a CLI scan, an LSP daemon, a Kubernetes webhook, or an LLM query.
 - **Abstraction Boundaries**:
-  - *Leaky Abstraction in AST Extractors*: `TerraformExtractor` and `KubernetesExtractor` manually instantiate `createEvidence` and construct asset IDs with hardcoded string prefixes (`asset-alb-`, `asset-k8s-pod-`). If ID schemes evolve, every extractor and resolver breaks.
-  - *Lack of Extractor/Analyzer Factory Interfaces*: Extractors are manually instantiated in `DiscoveryEngine`. A dynamic registry or plugin provider pattern (`ExtractorPlugin`) is needed to allow third-party security checks without modifying core engine code.
-- **Domain Separation**: `EntityResolutionContext` couples discovery assets directly with findings. Resolution of topological infrastructure should ideally occur prior to finding attachment, allowing independent topology graphs to be queried separately from vulnerability overlays.
-
----
+  - *Strengths*: `GraphStore` abstraction cleanly decouples `InMemoryGraphStore` and `SqliteGraphStore`.
+  - *Area for Improvement*: AST extractors are registered via manual instantiation in `DiscoveryEngine`. A formal `ExtractorPlugin` interface with auto-discovery would allow third-party pluggability without modifying engine code.
 
 ### 2.2 Data Architecture & Persistence
-- **Current Data Model**:
-  - Assets and relationships are modeled as plain JavaScript objects validated by Zod and stored in in-memory Maps (`Map<string, GraphNode>` and `Map<string, GraphEdge>`).
-  - Bidirectional adjacency is maintained using secondary lookup maps: `outgoingEdges: Map<string, Set<string>>` and `incomingEdges: Map<string, Set<string>>`.
-- **Indexing & Query Patterns**:
-  - Direct neighbor queries (`getOutgoingEdges`, `getIncomingEdges`, `getNeighbors`) operate in $O(1)$ amortized lookup time.
-  - Path traversal is executed via recursive Depth-First Search (`findAllPaths`) with depth capping (`maxDepth: 10`) and cycle detection (`visitedNodes: Set<string>`).
-- **Persistence & Hydration**:
-  - Snapshots are serialized via `toSnapshot()` and rehydrated via `fromSnapshot()`.
-  - *Deficiency*: There is no transaction log, write-ahead log (WAL), or schema version migration strategy. Serialization of 50,000+ nodes to JSON will trigger high garbage collection pauses and process heap exhaustion.
-- **Audit Storage Hygiene**:
-  - `WormAuditLogger` uses an in-memory array with SHA-256 hash chaining ($H_n = \text{SHA256}(H_{n-1} + \text{Payload})$). While mathematically sound for cryptographic tamper detection, storing this in process memory completely undermines its "Write-Once-Read-Many" (WORM) guarantee.
-
----
+- **Dual-Tier Graph Storage**:
+  - Tier 1: `InMemoryGraphStore` backed by `Map<string, GraphNode>` and `Map<string, GraphEdge>` with secondary index sets for adjacency lookups.
+  - Tier 2: `SqliteGraphStore` using SQLite with WAL mode, parameterized statements, foreign keys, and indexes on `source_asset_id` and `target_asset_id`.
+- **WORM Audit Storage**:
+  - `PersistentWormAuditLogger` backed by `SqliteAuditStorageProvider` guarantees tamper-evident logging using SHA-256 hash chaining:
+    $$H_n = \text{SHA256}(H_{n-1} + \text{tenantId} + \text{userId} + \text{action} + \text{resourceId} + \text{timestamp} + \text{details})$$
+- **Consistency Guarantees**:
+  - Graph mutations inside `SecurityGraphEngine` execute inside `engine.transaction(() => { ... })` blocks.
+- **Identified Gaps**:
+  - Schema migrations for SQLite rely on raw SQL `CREATE TABLE IF NOT EXISTS`. A formal migration runner (such as Umzug or Kysely migrations) is needed for long-term production release management.
 
 ### 2.3 Error Handling & Fault Tolerance
-- **Sandbox Security**:
-  - `DefaultEphemeralWorkspace.resolveSafePath` properly defends against directory traversal attacks, rejecting paths containing `..` or pointing outside `workspaceDir`.
-  - `fs.lstat` checks specifically verify that symlinks do not point outside the workspace jail.
-- **Fail-Safe Parser Behaviors**:
-  - In `DiscoveryEngine` and `AnalyzerRunner`, individual file extraction errors are caught in `try/catch` blocks and skipped (`continue`). This prevents one malformed file from aborting the entire scan.
-- **Deficiencies & Resilience Gaps**:
-  - *AI Parsing Fragility*: `AIReasoningEngine` strips markdown fences and uses raw `JSON.parse`. While wrapped in a `try/catch`, it provides no fallback retry mechanism with temperature adjustment or schema repair prompts when LLMs produce truncated JSON.
-  - *Patch Application Brittle Failures*: `PatchApplier` does not validate whether a file's syntactical integrity is preserved after patch application. If a replacement leaves invalid HCL syntax, the error is only caught during verification re-scan, resulting in confusing diagnostic messages.
-
----
+- **Defensive Ingestion Isolation**:
+  - `DefaultEphemeralWorkspace.resolveSafePath` defends against path traversal, symlink escapes, and parent environment leakage.
+- **Fail-Open Circuit Breakers**:
+  - The Kubernetes Admission Controller (`AdmissionEvaluator`) implements a strict fail-open architecture: timeouts (>500ms) or unexpected engine panics automatically default to `ALLOW` under `failurePolicy: Ignore` while recording the incident to the WORM audit log.
+- **Structured Exception Propagation**:
+  - Domain errors (`PatchApplicationError`, `TenantIsolationError`) carry structured context (file path, line number, tenant ID, expected snippet) rather than opaque string messages.
 
 ### 2.4 Observability & Diagnostics
-- **Logging Telemetry**:
-  - The codebase currently relies on rudimentary `console.log` and `console.warn` statements (e.g., in `AIReasoningEngine`, `bin.ts`, and `VerificationRunner`).
-  - Lacks structured logging (e.g., Pino, Winston) with contextual trace IDs, tenant IDs, repository tags, and log levels (`debug`, `info`, `warn`, `error`).
-- **Metric Instrumentation**:
-  - Minimal metrics exist: `executionTimeMs` on AI calls, `hits`/`misses` in `AstContentCache`.
-  - No OpenTelemetry (OTel) instrumentation for tracing scan pipeline phases, AST parse durations, graph traversal latencies, or LLM token usage.
-- **Alerting Hooks**:
-  - Output formatters support ANSI Terminal and SARIF 2.1.0 (`sarif-formatter.ts`). No webhook dispatchers (Slack, PagerDuty, Datadog) exist for critical path alerts.
-
----
+- **Current State**:
+  - Structured audit logs via WORM logger.
+  - Metrics tracking in ingestion coordinator (`ScanJobMetrics`).
+  - Scan summaries formatted into ANSI Terminal, JSON, Markdown, and SARIF 2.1.0 standards.
+- **Telemetry Deficiencies**:
+  - No OpenTelemetry (OTel) tracer spans instrumenting the discovery, graph compilation, and path analysis stages.
+  - Standard output relies on `console.log`/`console.warn` rather than an injected, level-configurable structured logger (e.g., Pino).
 
 ### 2.5 Testing & Quality Assurance
-- **Current State**:
-  - Outstanding test suite: 13 test files, 54 tests, passing in ~2.6 seconds using Vitest.
-  - Real fixture suites in `fixtures/`:
-    - `001-ssrf-iam-s3`: Java Spring Boot SSRF + Terraform IAM Wildcard + S3 PII Bucket.
-    - `002-k8s-vault`: Kubernetes Ingress + SA Token + Cloud Role + Financial Vault.
-    - `003-cicd-supply-chain`: GitHub Actions injection + hardcoded AWS keys + Release S3.
-- **Testing Gaps**:
-  - *Unit vs. Integration*: High reliance on end-to-end integration tests (`e2e-benchmark.test.ts`); unit test coverage within `analyzers` and `discovery` is heavily biased toward the exact test fixture strings.
-  - *Mock Usage in AI*: Tests currently execute against `RuleBasedLLMProvider`. There are no automated integration tests verifying real LLM SDK calls (e.g., Google Gemini 1.5 Pro / Flash via `@google/genai`) using recorded VCR/nock network fixtures.
-  - *Negative Testing & Fuzzing*: Lack of malformed AST fuzz tests (e.g., syntax-broken HCL, recursive symlink loops, billion-laughs YAML bombs).
+- **Current Test Harness**:
+  - **48 Test Files, 215 Tests**, executed in **~13.6 seconds** via Vitest.
+  - **Zero flaky tests**: Fully deterministic execution with synthetic fixtures.
+- **Coverage Distribution**:
+  - *Core & Graph*: Unit and topological traversal tests covering cycle detection, reachability, and min-cut sets.
+  - *Advanced Capabilities*: Dedicated unit tests for SBOM generation, data lineage propagation, threat intelligence scoring, admission evaluation, ChatOps HMAC signing, executive briefings, and What-If isolation.
+  - *CLI End-to-End*: `phase4-cli.test.ts` and `phase5-cli.test.ts` validating full pipeline execution against real synthetic fixtures.
+- **Identified Coverage Gaps**:
+  - *Fuzz Testing*: Lack of property-based fuzz tests generating malformed ASTs, circular symlink structures, or massive YAML payloads.
+  - *Live Cloud Integration*: Cloud connector tests use synthetic mocks rather than live LocalStack / test containers.
 
 ---
 
@@ -143,228 +143,77 @@ By tracing deterministic topological connectivity from untrusted public ingress 
 
 | Priority | Category | Component / Module | Issue / Technical Debt | Impact If Ignored | Recommended Fix |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| **P0** | **Algorithm** | `@ai-security-architect/graph`<br>`entity-resolver.ts` | **Cartesian Cross-Product Entity Resolution**: Links all ALBs to all Services, all Services to all Pods, and defaults to `serviceAccounts[0]`. | Catastrophic false-positive explosion in multi-service enterprise repos; produces invalid attack paths. | Implement deterministic Kubernetes label/selector matching (`spec.selector` $\to$ `metadata.labels`) and ALB Target Group ARN matching. |
-| **P0** | **Security / Engine** | `@ai-security-architect/remediation`<br>`patch-applier.ts` | **Hardcoded String Substitution**: Hardcoded replacement targeting `iam.tf` with specific PII bucket string; naive line replace fallback. | Patches fail on any repo other than Demo Fixture 001; high risk of corrupting production IaC files. | Adopt concrete AST-aware refactoring or standard unified diff patch engines (e.g., `diff` / `fast-myers-diff` with hunk offset recalculation). |
-| **P0** | **AI / Extensibility** | `@ai-security-architect/ai`<br>`rule-based-provider.ts` | **Hardcoded Rule-Based LLM Mock**: `RuleBasedLLMProvider` is hardcoded to Scenario 001; returns empty patches for all other scenarios. | Platform cannot reason about novel vulnerabilities or custom enterprise topologies. | Implement production Gemini SDK integration (`@google/genai` or `google-genai`) with structured JSON schema outputs and fallback retries. |
-| **P1** | **Data / Reliability** | `@ai-security-architect/enterprise`<br>`worm-audit-logger.ts` | **Volatile In-Memory Audit Trail**: Audit entries stored in process array `this.entries = []`. | Total loss of compliance audit logs upon process exit, worker crash, or container restart. | Introduce pluggable append-only storage adapter interface with SQLite / PostgreSQL / DynamoDB persistence and S3 WORM export. |
-| **P1** | **Extraction** | `@ai-security-architect/discovery`<br>`terraform-extractor.ts` | **Regex-Based HCL Parsing**: Extracts Terraform resource blocks using regular expressions instead of a formal grammar parser. | Inability to parse nested blocks, HCL expressions, dynamic blocks, or local variable references; misses critical assets. | Integrate `@hashicorp/hcl` WebAssembly parser or parse machine-readable `terraform show -json` plan outputs. |
-| **P1** | **Algorithm** | `@ai-security-architect/attackpath`<br>`min-cut-optimizer.ts` | **Heuristic Edge Frequency vs. True Min-Cut**: Ranks single edges by path count rather than calculating minimum cut sets across residual flow networks. | Fails to remediate multi-homed or redundant attack paths where severing 2+ edges simultaneously is strictly required. | Implement Dinic's or Edmonds-Karp maximum-flow / minimum-cut algorithm with capacity weights based on blast radius. |
-| **P2** | **Performance** | `@ai-security-architect/cache`<br>`ast-content-cache.ts` | **Unbounded In-Memory Map**: Cache entries are never evicted and lack TTL or size limits. | Memory leak causing Out-Of-Memory (OOM) fatal crashes during large CI/CD scans or long-running worker processes. | Replace plain `Map` with an LRU cache (e.g., `lru-cache`) with max memory/entry bounds and optional filesystem backing. |
-| **P2** | **Observability** | Platform-wide | **Unstructured Console Logging**: Widespread `console.log` statements without structured logging levels or OpenTelemetry traces. | Impossible to debug scan failures, monitor performance bottlenecks, or aggregate logs in enterprise SIEMs. | Introduce a centralized structured logger (e.g., `pino`) with correlation IDs and OpenTelemetry span propagation. |
+| **P0** | **Algorithm** | `@ai-security-architect/graph`<br>`entity-resolver.ts` | **Heuristic Cross-Layer Resolution Fallback**: Falls back to linking all workloads to first service account if metadata is missing. | Spurious phantom attack paths on large enterprise repositories with multiple service accounts. | Require deterministic label matching (`spec.selector` $\to$ `metadata.labels`); if unresolvable, tag as `UNRESOLVED_BINDING` instead of guessing. |
+| **P0** | **Concurrency** | `@ai-security-architect/graph`<br>`sqlite-graph-store.ts` | **SQLite Single-Writer Lock Contention**: Concurrent CLI or API worker scans hitting a shared SQLite file trigger `SQLITE_BUSY`. | Scan failures or timeout aborts in high-throughput multi-worker CI/CD pipelines. | Configure SQLite `busy_timeout` (5000ms), enable WAL mode explicitly, and pool connections via a singleton worker mutex. |
+| **P1** | **Parsing** | `@ai-security-architect/discovery`<br>`terraform-extractor.ts` | **Regex-Based IaC Extraction**: Regex extraction fails on complex HCL dynamic expressions and Terraform module outputs. | Undetected cloud infrastructure assets, resulting in incomplete security graphs. | Migrate from regex pattern matching to `@hashicorp/hcl` WebAssembly parser or ingest structured `terraform show -json` plan outputs. |
+| **P1** | **Observability** | Platform-wide | **Unstructured Logging**: Inconsistent `console.log` statements lack correlation IDs and log levels. | Difficult debugging and root-cause analysis in persistent daemon modes (K8s webhook, ChatOps). | Introduce a platform-wide structured logger (Pino) with correlation IDs and OpenTelemetry span injection. |
+| **P2** | **Migrations** | `@ai-security-architect/graph`<br>`stores/sqlite-graph-store.ts` | **Inline DDL Without Schema Migrations**: Tables created via raw DDL strings without a version tracking table. | Inability to alter database schema cleanly across platform upgrades without dropping existing data. | Implement an automated lightweight migration runner (`SchemaMigrationStore`) tracking applied version hashes. |
 
 ---
 
-### 3.2 Refactoring Architectures & Code Transformations
+### 3.2 Concrete Refactoring Patterns for Top Concerns
 
-#### Refactoring 1: Deterministic Cross-Layer Entity Resolution (P0 Fix)
+#### Concern 1: Deterministic Entity Resolution (P0)
 
-**Current Problematic Pattern (`entity-resolver.ts`):**
+**Before (Heuristic Guessing):**
 ```typescript
-// BEFORE: Naive Cartesian Product linking every service to every pod
-for (const svc of services) {
-  for (const pod of pods) {
-    graph.addRelationship({
-      sourceAssetId: svc.asset.id,
-      targetAssetId: pod.asset.id,
-      type: 'DEPLOYED_TO',
-      nature: 'INFERRED',
-      confidence: 0.95, // False confidence!
-    });
+// Problematic heuristic in entity-resolver.ts
+if (unboundPods.length > 0 && serviceAccounts.length > 0) {
+  for (const pod of unboundPods) {
+    // Guesses by attaching to the first available service account!
+    this.createRelationship(pod.id, serviceAccounts[0].id, 'RUNS_AS');
   }
 }
-// Naive fallback: grabs the first service account in the entire cluster!
-const targetSA = serviceAccounts.find((sa) => sa.asset.name === saName) || serviceAccounts[0];
 ```
 
-**Architectural Solution:**
-Resolve entities deterministically using explicit service-to-workload selectors and pod label sets.
-
+**After (Deterministic Resolution & Explicit Unresolved Evidence):**
 ```typescript
-// AFTER: Deterministic Selector-to-Label Matching & Explicit Namespace Scoping
-export class DeterministicEntityResolver {
-  public linkServicesToPods(
-    services: GraphNode[],
-    pods: GraphNode[],
-    graph: SecurityGraphEngine
-  ): void {
-    for (const svcNode of services) {
-      const svcMeta = svcNode.asset.metadata;
-      const selector = svcMeta.selector as Record<string, string> | undefined;
-      const svcNamespace = (svcMeta.namespace as string) || 'default';
-
-      if (!selector || Object.keys(selector).length === 0) continue;
-
-      // Find pods strictly matching ALL selector labels within the SAME namespace
-      const matchingPods = pods.filter((podNode) => {
-        const podMeta = podNode.asset.metadata;
-        const podNamespace = (podMeta.namespace as string) || 'default';
-        if (svcNamespace !== podNamespace) return false;
-
-        const podLabels = (podMeta.labels as Record<string, string>) || {};
-        return Object.entries(selector).every(([k, v]) => podLabels[k] === v);
-      });
-
-      for (const pod of matchingPods) {
-        graph.addRelationship({
-          id: `rel-${svcNode.asset.id}-${pod.asset.id}`,
-          tenantId: graph.tenantId,
-          sourceAssetId: svcNode.asset.id,
-          targetAssetId: pod.asset.id,
-          type: 'DEPLOYED_TO',
-          nature: 'DECLARED',
-          confidence: 1.0,
-          metadata: { matchedSelectors: selector },
-        });
-      }
+// Refactored pattern: Deterministic binding with unresolvable tagging
+for (const pod of unboundPods) {
+  const declaredSaName = pod.metadata?.serviceAccountName as string | undefined;
+  
+  if (declaredSaName) {
+    const matchedSa = serviceAccounts.find(
+      (sa) => sa.name === declaredSaName && sa.namespace === pod.namespace
+    );
+    if (matchedSa) {
+      this.createRelationship(pod.id, matchedSa.id, 'RUNS_AS', 1.0);
+      continue;
     }
   }
 
-  public linkPodsToServiceAccounts(
-    pods: GraphNode[],
-    serviceAccounts: GraphNode[],
-    graph: SecurityGraphEngine
-  ): void {
-    for (const pod of pods) {
-      const explicitSaName = pod.asset.metadata.serviceAccountName as string | undefined;
-      const podNamespace = (pod.asset.metadata.namespace as string) || 'default';
-
-      // Strictly match service account in the same namespace; NO greedy fallback!
-      const targetSA = serviceAccounts.find((sa) => {
-        const saNamespace = (sa.asset.metadata.namespace as string) || 'default';
-        return sa.asset.name === (explicitSaName || 'default') && saNamespace === podNamespace;
-      });
-
-      if (targetSA) {
-        graph.addRelationship({
-          id: `rel-${pod.asset.id}-${targetSA.asset.id}`,
-          tenantId: graph.tenantId,
-          sourceAssetId: pod.asset.id,
-          targetAssetId: targetSA.asset.id,
-          type: 'RUNS_AS',
-          nature: 'DECLARED',
-          confidence: 1.0,
-          metadata: { serviceAccountName: targetSA.asset.name },
-        });
-      }
-    }
-  }
+  // Never guess. Flag as UNRESOLVED_REFERENCE finding with high confidence
+  this.recordUnresolvedBinding({
+    assetId: pod.id,
+    expectedTargetType: 'KUBERNETES_SERVICE_ACCOUNT',
+    reason: `Pod '${pod.name}' declares serviceAccountName '${declaredSaName ?? 'default'}' which does not resolve within namespace '${pod.namespace}'.`,
+  });
 }
 ```
 
 ---
 
-#### Refactoring 2: Multi-Hunk Unified Diff Engine for Patch Application (P0 Fix)
+#### Concern 2: SQLite Write Concurrency & Connection Safety (P0)
 
-**Current Problematic Pattern (`patch-applier.ts`):**
+**Before (Unprotected SQLite Connection):**
 ```typescript
-// BEFORE: Hardcoded regex specific to Scenario 001
-if (patch.filePath.includes('iam.tf') && (originalContent.includes('"s3:*"'))) {
-  return originalContent.replace(
-    /Action\s*=\s*["']s3:\*["'][\s\r\n]*Resource\s*=\s*["']\*["']/g,
-    `Action = [ "s3:GetObject", "s3:ListBucket" ] ...`
-  );
-}
+// sqlite-graph-store.ts
+this.db = new Database(dbPath);
+this.db.pragma('journal_mode = WAL');
 ```
 
-**Architectural Solution:**
-Adopt a standards-compliant patch engine using unified diff parsing and exact context matching to apply multi-file, multi-hunk modifications safely.
-
+**After (Production-Grade Concurrency & Busy Handling):**
 ```typescript
-// AFTER: Resilient Unified Diff Application with Syntactic Validation
-import * as diff from 'diff';
-
-export class RobustPatchApplier {
-  public applyUnifiedDiff(originalContent: string, patchDiff: string): string {
-    // Parse unified diff into structured hunks
-    const parsedDiff = diff.parsePatch(patchDiff);
-    if (!parsedDiff || parsedDiff.length === 0) {
-      throw new Error('Invalid patch format: unable to parse unified diff');
-    }
-
-    // Apply patch with fuzz tolerance and line offset tracking
-    const result = diff.applyPatch(originalContent, patchDiff, {
-      fuzzFactor: 2,
-    });
-
-    if (result === false) {
-      throw new Error('Patch application rejected: hunk context does not match target file');
-    }
-
-    return result;
-  }
-}
-```
-
----
-
-#### Refactoring 3: Persistent WORM Storage Adapter Pattern (P1 Fix)
-
-**Current Problematic Pattern (`worm-audit-logger.ts`):**
-```typescript
-// BEFORE: In-memory array that vanishes when the process terminates
-export class WormAuditLogger {
-  private readonly entries: AuditEntry[] = [];
-  // ...
-}
-```
-
-**Architectural Solution:**
-Implement a persistent storage provider with atomic append transactions and verifiable cryptographic hash verification.
-
-```typescript
-// AFTER: Storage Provider Interface with SQLite / PostgreSQL Adapter
-export interface AuditStorageProvider {
-  append(entry: AuditEntry): Promise<void>;
-  getLastEntry(tenantId: string): Promise<AuditEntry | null>;
-  query(tenantId: string, limit: number, offset: number): Promise<AuditEntry[]>;
-}
-
-export class PersistentWormAuditLogger {
-  constructor(private readonly storage: AuditStorageProvider) {}
-
-  public async log(
-    context: SecurityContext,
-    action: string,
-    resourceId: string,
-    details: Record<string, unknown> = {}
-  ): Promise<AuditEntry> {
-    // 1. Fetch immutable previous tail record atomically
-    const lastEntry = await this.storage.getLastEntry(context.tenantId);
-    const previousHash = lastEntry ? lastEntry.hash : GENESIS_HASH;
-
-    const id = `audit-${crypto.randomUUID()}`;
-    const timestamp = new Date().toISOString();
-
-    // 2. Cryptographic SHA-256 seal
-    const hash = this.computeEntryHash({
-      previousHash,
-      tenantId: context.tenantId,
-      userId: context.userId,
-      action,
-      resourceId,
-      timestamp,
-      details,
-    });
-
-    const entry: AuditEntry = {
-      id,
-      tenantId: context.tenantId,
-      userId: context.userId,
-      action,
-      resourceId,
-      timestamp,
-      details,
-      previousHash,
-      hash,
-    };
-
-    AuditEntrySchema.parse(entry);
-
-    // 3. Persist to write-ahead disk storage
-    await this.storage.append(entry);
-    return entry;
-  }
-}
+// sqlite-graph-store.ts
+this.db = new Database(dbPath, {
+  timeout: 10000, // Wait up to 10s on locked database before throwing
+  fileMustExist: false,
+});
+this.db.pragma('journal_mode = WAL');
+this.db.pragma('synchronous = NORMAL');
+this.db.pragma('temp_store = MEMORY');
+this.db.pragma('busy_timeout = 10000');
+this.db.pragma('foreign_keys = ON');
 ```
 
 ---
@@ -372,186 +221,107 @@ export class PersistentWormAuditLogger {
 ## 4. Optimization & Enhancement Recommendations
 
 ### 4.1 Performance & Scalability
-
-```
-                                RECOMMENDED HIGH-SCALE ARCHITECTURE
-┌─────────────────────────┐      ┌─────────────────────────┐      ┌─────────────────────────┐
-│     Worker Pool         │      │      Shared Cache       │      │   Distributed Engine    │
-│ Concurrency (Piscina)   │ ───> │  Redis / Persistent LRU │ ───> │  Graph Engine (Neo4j /   │
-│ Multi-Core Node.js AST  │      │  Content SHA-256 Keys   │      │  Indexed SQLite Graph)  │
-└─────────────────────────┘      └─────────────────────────┘      └─────────────────────────┘
-```
-
-1. **True Multi-Core Worker Threads for AST Parsing**:
-   - *Current State*: `ConcurrencyPool` uses `Promise.all` over asynchronous JavaScript tasks. Because Node.js is single-threaded, CPU-bound AST regex and parsing run on the main event loop, stalling I/O.
-   - *Recommendation*: Migrate CPU-intensive extraction (HCL, Java, TypeScript ASTs) to worker thread pools using `piscina` or Node.js native `worker_threads`, scaling linearly across multi-core CI runners.
-2. **Persistent Two-Tier AST & Finding Cache**:
-   - *Tier 1 (L1 Memory)*: In-process bounded LRU cache (`lru-cache`) capped at 500MB heap memory.
-   - *Tier 2 (L2 Disk / Remote)*: Disk-backed cache in `.sec-arch/cache` or remote S3/GCS/Redis cache keyed by git commit tree and file SHA-256. This enables instant (<1s) incremental scans on pull requests touching only 2–3 files.
-3. **Graph Traversal Pruning & Tarjan's Biconnected Components**:
-   - For graphs exceeding 5,000 nodes, exhaustive DFS will exceed recursion limits or timeout.
-   - Implement **Tarjan's Bridge-Finding Algorithm** to instantly identify topological articulation points (critical single-point-of-failure bridges) in $O(V + E)$ linear time without computing all exponential permutations.
-
----
+1. **Graph Traversal Memoization**:
+   - Cache intermediate reachability sub-trees during min-cut and attack path traversal. If nodes $A \to B \to C$ are verified to have no paths to targets, prune all future paths reaching node $A$.
+2. **Streaming AST Discovery**:
+   - Refactor `DiscoveryEngine.discoverAssets` to stream discovered files via Node.js worker pools using `worker_threads`, reducing multi-repository indexing latency by up to 65% on multi-core systems.
+3. **Graph Compression for Federation**:
+   - In org-wide graph federation (`@ai-security-architect/federation`), serialize shared cross-repo dependencies into immutable sub-graphs, avoiding redundant node copying across repos.
 
 ### 4.2 Developer Experience (DX) & Tooling
-1. **Unified Schema & Code Generation**:
-   - Centralize Zod schemas in `@ai-security-architect/core` and generate JSON Schemas and TypeScript interfaces automatically.
-   - Expose the JSON schemas to IDE extensions (VS Code / JetBrains) for auto-completing `sec-arch.config.yaml`.
-2. **Interactive CLI TUI (`sec-arch explore`)**:
-   - Provide an interactive terminal UI (using `ink` or `@clack/prompts`) allowing developers to step through attack steps hop-by-hop directly in their terminal.
-3. **Monorepo Build Acceleration**:
-   - Introduce **Turborepo** or **Nx** to replace raw npm workspace scripts. Turborepo provides pipeline caching (`turbo run build test lint`), ensuring unchanged packages are never rebuilt or retested in CI.
-
----
+1. **Pre-Commit Hook Integration**:
+   - Ship a lightweight git pre-commit hook mode (`sec-arch scan --staged`) that analyzes only uncommitted IaC and code diffs against the local SQLite graph in under 500ms.
+2. **Automated HCL / IaC Language Server Diagnostic Provider**:
+   - Extend `@ai-security-architect/lsp-server` to provide inline diagnostic squiggles directly inside VS Code and Neovim when engineers write wildcard IAM permissions or unpinned container images.
 
 ### 4.3 Security & Hardening Quick-Wins
-1. **YAML Bomb & ReDoS Defenses**:
-   - In `KubernetesExtractor`, configure `yaml.parseAllDocuments` with strict limits:
-     ```typescript
-     yaml.parseAllDocuments(content, { maxAliasCount: 100, prettyErrors: true });
-     ```
-   - Protect all SAST and extraction regular expressions with a ReDoS timeout wrapper or migrate to RE2 (Google's linear-time regex engine via `re2`).
-2. **Enhanced Privacy Redaction**:
-   - Expand `redactSensitiveData` in `@ai-security-architect/ai` beyond basic regexes. Integrate Microsoft Presidio or truffleHog pattern libraries to scrub JWTs, GCP service account keys, Slack webhooks, and database URIs before building LLM context handoffs.
-3. **Cryptographic Signature Verification on WORM Export**:
-   - Add asymmetric Ed25519 digital signatures to each audit block, enabling external auditors to mathematically prove the log's provenance without needing access to the platform's internal state.
+1. **Sandboxed AST Execution**:
+   - Ensure external linters or parsers executed in `ingestion` run with dropped OS capabilities (`seccomp`, non-root user, read-only root filesystems).
+2. **Strict Webhook Egress Allowlisting**:
+   - In `@ai-security-architect/enterprise/webhook-dispatcher`, enforce DNS pinning and private IP blocking (RFC 1918 / AWS IMDS `169.254.169.254`) to eliminate server-side request forgery (SSRF) risks from user-configured webhook URLs.
 
 ---
 
 ## 5. Future Engineering & Feature Roadmap
 
 ```
-                                  STRATEGIC ROADMAP TIMELINE
-  WEEKS 1–4                        MONTHS 2–3                       MONTHS 4–6+
-┌─────────────────────────┐      ┌─────────────────────────┐      ┌─────────────────────────┐
-│ PHASE 1: STABILIZATION  │ ───> │ PHASE 2: SCALING & PERF │ ───> │ PHASE 3: NEXT-GEN EXP.  │
-│ • Fix Entity Resolution │      │ • Disk Cache & Worker T.│      │ • Live Cloud Connectors │
-│ • Unified Diff Patcher  │      │ • Dinic's Min-Cut Flow  │      │ • Multi-Model AI Agent  │
-│ • Live Gemini LLM SDK   │      │ • Persistent SQL/SQLite │      │ • IDE Real-Time Plugin  │
-│ • SQLite Persistent WORM│      │ • Webhook Alerting      │      │ • Automated Drift Guard │
-└─────────────────────────┘      └─────────────────────────┘      └─────────────────────────┘
+                                 STRATEGIC ROADMAP PHASES
+ ┌───────────────────────────────────┐
+ │   PHASE 1: STABILIZATION (W 1–4)  │ ──> SQLite concurrency locks, structured logging,
+ └─────────────────┬─────────────────┘     HCL AST parser migration, OTel tracing
+                   │
+ ┌─────────────────▼─────────────────┐
+ │   PHASE 2: SCALING (M 2–3)        │ ──> Worker thread pools, memoized path pruning,
+ └─────────────────┬─────────────────┘     distributed Redis lock tier, IDE LSP extension
+                   │
+ ┌─────────────────▼─────────────────┐
+ │   PHASE 3: NEXT-GEN (M 4–6+)      │ ──> eBPF runtime correlation, automated PR bot,
+ └───────────────────────────────────┘     AI multi-agent collaborative patch arbitration
 ```
 
-### Phase 1: Stabilization & Hardening (Completed ✅)
-*Goal: Fix architectural blockers, eliminate hardcoded fixtures, establish true persistence, and integrate live AI models.*
+### Phase 1: Stabilization & Hardening (Short-Term: Weeks 1–4)
+- **Milestone 1.1**: Eliminate all heuristic entity resolution fallbacks; require deterministic selector matching and emit `UNRESOLVED_REFERENCE` findings.
+- **Milestone 1.2**: Harden SQLite storage engines (`busy_timeout = 10000`, WAL mode, foreign key validation, structured migrations).
+- **Milestone 1.3**: Implement structured Pino logging with OpenTelemetry trace and span injection across all 26 packages.
+- **Milestone 1.4**: Enforce egress IP validation in webhook dispatchers to eliminate SSRF hazards.
 
-- [x] **Task 1.1: Refactor Entity Resolution (`@ai-security-architect/graph`)**
-  - Implement deterministic Kubernetes label-selector matching (`spec.selector` $\to$ `metadata.labels`).
-  - Eliminate all greedy array fallbacks (`serviceAccounts[0]`).
-  - Add explicit namespace boundaries to cross-layer relationship links.
-- [x] **Task 1.2: Generalized Unified Diff Patch Engine (`@ai-security-architect/remediation`)**
-  - Replace regex string substitution with `diff.applyPatch` supporting multi-line context matching and fuzzing.
-  - Add AST validation check on patched files to ensure syntax validity before committing.
-- [x] **Task 1.3: Live Google Gemini LLM Integration (`@ai-security-architect/ai`)**
-  - Implement `GeminiLLMProvider` using `@google/genai` targeting latest Gemini Flash/Pro models.
-  - Enforce native JSON structured output (`responseSchema: AIReasoningOutputSchema`).
-  - Implement exponential backoff and automated retry on JSON schema validation failures.
-- [x] **Task 1.4: Persistent SQLite WORM Storage (`@ai-security-architect/enterprise`)**
-  - Implement `SqliteAuditStorageProvider` using `better-sqlite3`.
-  - Maintain cryptographic hash verification during log rotation and disk rehydration.
+### Phase 2: Architectural Scaling & Performance (Medium-Term: Month 2–3)
+- **Milestone 2.1**: Migrate AST discovery to worker thread pools (`p-limit` / `worker_threads`) for multi-core file indexing.
+- **Milestone 2.2**: Implement memoized path pruning on dense hub-and-spoke nodes in `AttackPathEngine`.
+- **Milestone 2.3**: Deliver formal `ExtractorPlugin` registry interface for zero-touch third-party analyzer integration.
+- **Milestone 2.4**: Publish VS Code extension bundle wrapping `@ai-security-architect/lsp-server`.
 
----
+### Phase 3: Next-Generation Feature Expansion (Long-Term: Month 4–6+)
 
-### Phase 2: Architectural Scaling & Performance (Completed ✅)
-*Goal: Scale graph traversal to 50,000+ nodes, accelerate CI execution with caching, and implement true network min-cut.*
-
-- [x] **Task 2.1: Residual Flow Network Min-Cut Algorithm (`@ai-security-architect/attackpath`)**
-  - Implement Dinic’s algorithm ($O(V^2 E)$) to compute exact min-cut edge sets across multi-path topologies.
-  - Weight edge capacities inversely proportional to blast radius (e.g., IAM policy edit = low cost, public endpoint teardown = high cost).
-- [x] **Task 2.2: Multi-Threaded Worker Pool (`@ai-security-architect/cache`)**
-  - Move AST extractors and SAST regex scanners to dedicated worker threads (`piscina`).
-  - Benchmark 10x throughput improvement on 10,000-file enterprise repositories.
-- [x] **Task 2.3: Two-Tier Cache System (Memory LRU + On-Disk Storage)**
-  - Implement `.sec-arch/cache` disk persistence for ASTs and analyzer findings.
-  - Enable PR incremental scanning mode: evaluate git diff against `HEAD~1` and analyze only modified files.
-- [x] **Task 2.4: Enterprise SIEM & Webhook Dispatcher**
-  - Add webhook delivery engine for Slack, Microsoft Teams, and Jira issue generation on high-severity attack paths.
-
----
-
-### Phase 3: Next-Generation Feature Expansion (Completed ✅)
-*Goal: Expand from static code analysis to live hybrid cloud graph reasoning and real-time developer feedback.*
-
-- [x] **Task 3.1: Live Cloud Runtime Connectors (AWS / GCP / K8s)** (`@ai-security-architect/cloud-connectors`)
-- [x] **Task 3.2: Multi-Model Autonomous Remediation Agent** (`@ai-security-architect/agent`)
-- [x] **Task 3.3: Real-Time IDE Security Architect (LSP)** (`@ai-security-architect/lsp-server`)
-- [x] **Task 3.4: Cloud Infrastructure Drift Detection** (`@ai-security-architect/cloud-connectors`)
-
----
-
-### Phase 4: Enterprise Governance, Operations & Unified CLI (Completed ✅)
-*Goal: Regulatory compliance, FAIR financial risk quantification, runbooks, simulation, and complete CLI integration.*
-
-- [x] **Task 4.1: Regulatory & Compliance Framework Mapping** (`@ai-security-architect/compliance`)
-- [x] **Task 4.2: FAIR Cyber Risk Financial Model (ALE & SLE)** (`@ai-security-architect/risk-quant`)
-- [x] **Task 4.3: Automated Remediation Runbook Playbooks** (`@ai-security-architect/runbooks`)
-- [x] **Task 4.4: Natural Language Architecture Querying** (`@ai-security-architect/nl-query`)
-- [x] **Task 4.5: Purple Team Threat Modeling & Attack Simulation** (`@ai-security-architect/attackpath`)
-- [x] **Task 4.6: Policy-as-Code Security Budget Enforcement** (`@ai-security-architect/policy`)
-- [x] **Task 4.7: Historical MTTR & Risk Burndown Dashboard** (`@ai-security-architect/dashboard`)
-- [x] **Task 4.8: Multi-Repo & Org-Wide Graph Federation** (`@ai-security-architect/federation`)
-- [x] **Task 4.9: Visual Knowledge Graph Web Application** (`@ai-security-architect/web`)
-- [x] **Task 4.10: Full CLI Subcommand Unification** (`@ai-security-architect/cli`)
+| Feature Name | Business & Technical Value | Complexity | Architectural Prerequisites |
+| :--- | :--- | :---: | :--- |
+| **eBPF Runtime Trajectory Correlation** | Correlate static attack paths against live kernel-level socket connections and process executions (Cilium / Tetragon), proving whether an attack path was actively traversed in production. | **High** | Graph Engine v2 with live edge weight annotations; Cloud Connector streaming receiver. |
+| **Autonomous PR Auto-Remediation Bot** | Automatically open verified, closed-loop tested pull requests in GitHub/GitLab with full min-cut proof and unit test regression reports. | **Medium** | Remediation verification engine; VCS provider OAuth apps. |
+| **Multi-Agent Remediation Arbitration** | Multi-agent collaboration where specialized agents (e.g., IAM Specialist, Network Architect, App Developer) propose, debate, and converge on the minimal blast-radius patch. | **High** | Shared Gemini provider; Autonomous agent state machine. |
+| **Cloud-Native SaaS Control Plane** | Multi-tenant central dashboard hosting org-wide federated security graphs, compliance evidence vaults, and webhook coordination. | **High** | Access Control RBAC package; PostgreSQL storage backend adapter. |
 
 ---
 
 ## 6. Technical Decision Log (ADR Recommendations)
 
-The engineering team must formally ratify the following Architectural Decision Records (ADRs) prior to commencing Phase 2 scaling:
-
-### ADR-001: Adoption of an Embedded Graph Storage Engine
-- **Context**: The security graph currently resides in Node.js heap memory (`Map<string, GraphNode>`). As graph size exceeds 50,000 nodes and 200,000 edges, JSON serialization and heap pressure cause high GC pauses (>500ms) and prevent concurrent worker access.
-- **Decision Options**:
-  1. *Option A*: Maintain pure in-memory Maps with stream serialization.
-  2. *Option B*: Integrate an embedded database engine (**DuckDB** or **SQLite** with custom adjacency indices).
-  3. *Option C*: Require external graph database infrastructure (Neo4j / Amazon Neptune).
-- **Architectural Recommendation**: **Option B (Embedded SQLite with WAL Mode)**.
-  - *Rationale*: Maintains zero-dependency deployment for the CLI and GitHub Action (no external database server required), while offloading graph indexing to memory-mapped disk storage (`mmap`), instantly unlocking multi-worker concurrency and sub-millisecond query performance.
+### ADR-001: Adoption of SQLite with WAL Mode as Default Embedded Store
+- **Status**: **ACCEPTED / CODIFIED**
+- **Context**: The platform required a lightweight, zero-dependency persistence layer for single-scan CLI executions that could retain scan histories, graphs, and WORM audit logs without requiring a running Docker daemon or external database service.
+- **Decision**: Standardize on SQLite (`better-sqlite3`) configured with Write-Ahead Logging (`WAL`), `synchronous = NORMAL`, and `busy_timeout = 10000ms`. Provide a clean `GraphStore` interface to allow drop-in replacement by PostgreSQL in enterprise SaaS deployments.
+- **Consequences**: Zero setup friction for developers; deterministic local performance. Highly concurrent writes from distributed workers must be coordinated or channeled through an API gateway.
+- **Alternatives Considered**: LevelDB (lacks relational query semantics for graph diffs), PostgreSQL (too heavy for local CLI use), Pure JSON files (unbounded memory usage and zero transaction safety).
 
 ---
 
-### ADR-002: AST Parsing Migration Strategy: Native HCL2 Parser vs. CLI Pre-Plan JSON
-- **Context**: `TerraformExtractor` uses brittle regular expressions to parse `.tf` files, resulting in syntax edge-case failures.
-- **Decision Options**:
-  1. *Option A*: Refine regular expressions to handle nested braces.
-  2. *Option B*: Compile HashiCorp's official Go HCL2 parser to WebAssembly (`wasm`).
-  3. *Option C*: Ingest `terraform show -json` execution plan files.
-- **Architectural Recommendation**: **Option B for Developer Workspaces, Option C for CI/CD Pipelines**.
-  - *Rationale*: In local dev and PR pre-checks, developers have not yet run `terraform plan`; a WebAssembly-compiled HCL2 parser provides instant, 100% syntactically correct ASTs without requiring the `terraform` CLI binary installed. In CI/CD deployment gates, ingesting the resolved Terraform JSON plan provides complete variable resolution.
+### ADR-002: In-Memory "What-If" Graph Cloning Strategy
+- **Status**: **ACCEPTED / CODIFIED**
+- **Context**: Operators and automated agents need to simulate destructive remediation hypotheses (severing edges, revoking roles, decommissioning gateways) to calculate risk deltas without contaminating audit trails or persistent graph state.
+- **Decision**: Evaluate all what-if hypotheses strictly against in-memory snapshots (`SecurityGraphEngine.fromSnapshot(snapshot, { backend: 'memory' })`). Explicitly label all outputs with `isSimulatedOnly: true` and prohibit any writes to `ScanHistoryStore`.
+- **Consequences**: Guarantees zero persistent mutation and zero audit pollution. Cloned graphs consume temporary process memory proportional to node count.
+- **Alternatives Considered**: In-place database transactions with rollback (risks uncommitted reads and deadlocks), Shadow database forks (unnecessary disk I/O overhead).
 
 ---
 
-### ADR-003: LLM Orchestration Architecture: Direct SDK vs. Agentic Workflow Framework
-- **Context**: The platform requires intelligent reasoning to generate context-aware IaC patches and explain root causes.
-- **Decision Options**:
-  1. *Option A*: Direct SDK invocation (`@google/genai`) with strict Zod structured outputs.
-  2. *Option B*: Adopt a heavy orchestration framework (LangChain / CrewAI).
-  3. *Option C*: Native lightweight state-machine agent using Google Antigravity SDK or custom async state machine.
-- **Architectural Recommendation**: **Option A (Direct SDK with Zod Schemas) for Phase 1, migrating to Option C for Phase 3 Multi-Step Agents**.
-  - *Rationale*: Avoid heavy runtime dependencies and non-deterministic abstractions. Direct SDK calls with native JSON schema enforcement guarantee sub-second latency, deterministic output contracts, and minimal bundle size for the CLI binary.
+### ADR-003: Fail-Open Default Architecture for Live Services
+- **Status**: **ACCEPTED / CODIFIED**
+- **Context**: Persistent admission webhooks (Kubernetes) and ChatOps bots operate inline with developer velocity and cluster operations. An internal crash or timeout in security tooling must never block production deployments.
+- **Decision**: Default the Kubernetes Admission Controller to `failurePolicy: Ignore` and `mode: "dry-run"`. Implement millisecond circuit breakers that catch unhandled exceptions, record a `TIMEOUT_FAIL_OPEN` audit event to the tamper-evident WORM log, and allow workloads to proceed.
+- **Consequences**: Zero risk of cluster lockouts or CI pipeline freezes due to security service degradations. Requires continuous monitoring of audit logs to catch recurring timeout events.
+- **Alternatives Considered**: Fail-closed default (rejected: unacceptably hazardous for production cluster availability).
 
 ---
 
-### ADR-004: Min-Cut Strategy: Residual Capacity Flow vs. Combinatorial Bridge Detection
-- **Context**: The platform must determine the optimal security choke point to break all attack paths reaching crown jewels with the lowest developer disruption.
-- **Decision Options**:
-  1. *Option A*: Heuristic path edge frequency (current state).
-  2. *Option B*: Edmonds-Karp / Dinic's Algorithm for min-cut max-flow.
-  3. *Option C*: Articulation Point & Bridge Graph Theory (Tarjan / Hopcroft).
-- **Architectural Recommendation**: **Option B (Dinic's Min-Cut Flow with Weighted Blast-Radius Capacities)**.
-  - *Rationale*: Bridges only exist when a single edge disconnects components. Real enterprise networks have redundant connectivity. Min-cut flow identifies the minimal edge set $\{e_1, e_2, \dots, e_k\}$ that disconnects the target while incorporating operational blast-radius penalty costs into edge capacities.
+### ADR-004: Strict Partial Disclosure for Multi-Tenant Graph Queries
+- **Status**: **ACCEPTED / CODIFIED**
+- **Context**: In multi-team and multi-tenant architectures, attack paths frequently cross organizational boundaries (e.g., ingress proxy owned by Team A routing to database owned by Team B). Engineers require visibility into cross-boundary attack paths without leaking private implementation details of other teams.
+- **Decision**: Implement `PartialDisclosurePolicy` within `@ai-security-architect/access-control`. When a path intersects a user's boundary, redact external nodes (`isCrossBoundaryRedacted: true`, masked asset IDs, stripped vulnerability findings) while preserving path topology, traversal steps, and aggregate risk scores.
+- **Consequences**: Empowers service owners to understand perimeter risk while enforcing zero-trust data confidentiality across enterprise silos.
+- **Alternatives Considered**: Complete suppression of cross-boundary paths (rejected: creates blind spots for downstream service owners), Full disclosure across teams (rejected: violates enterprise security isolation policies).
 
 ---
 
-## 7. Conclusion & Strategic Guidance
+## 7. Conclusion & Architectural Verdict
 
-The **AI Security Architect** codebase possesses a rock-solid structural foundation. Its 12-package modular architecture, canonical Zod schemas, zero-trust sandboxed ingestion, and closed-loop verification pipeline put it significantly ahead of standard security linters.
+`ai-security-architect` has matured from an early graph traversal prototype into a robust, multi-faceted enterprise security architecture platform. By coupling **mathematical attack-path reasoning** with **verifiable cryptographic evidence**, **fail-open operational safety**, and **additive domain contracts**, the platform solves the industry-wide problem of siloed security alert fatigue.
 
-The primary obstacle preventing transition from active beta to enterprise production is the reliance on **heuristic shortcuts**:
-1. Cartesian entity linking (`entity-resolver.ts`)
-2. Brittle regex string patching (`patch-applier.ts`)
-3. Mock rule-based AI reasoning (`rule-based-provider.ts`)
-4. Volatile in-memory audit logs (`worm-audit-logger.ts`)
-
-By executing the prioritized Phase 1 stabilization initiatives outlined in this document, the engineering team will transform this platform into a resilient, scalable, and indispensable enterprise cloud security system.
+Executing the immediate stabilization items (Phase 1) and transitioning AST parsing to formal grammars will cement the platform as an enterprise-grade, production-hardened foundation for modern shift-left cybersecurity.
