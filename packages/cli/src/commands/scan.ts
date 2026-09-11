@@ -1,4 +1,6 @@
 import * as path from 'node:path';
+import * as fs from 'node:fs';
+import { execSync } from 'node:child_process';
 import {
   WorkspaceManager,
   RepositoryAcquisitionManager,
@@ -29,6 +31,42 @@ export async function executeScan(options: CliScanOptions): Promise<CliScanResul
       },
       workspace
     );
+
+    // Filter to staged files only if --staged mode is requested
+    if (options.staged) {
+      let stagedFiles: string[] = [];
+      try {
+        const output = execSync('git diff --name-only --cached', {
+          cwd: repoPath,
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'ignore'],
+        });
+        stagedFiles = output
+          .split('\n')
+          .map((f) => f.trim())
+          .filter(Boolean);
+      } catch (err: any) {
+        if (!options.silent) {
+          console.warn(`[Warning] Could not retrieve git staged files: ${err.message}. Scanning full workspace.`);
+        }
+      }
+
+      const stagedSet = new Set(stagedFiles.map((f) => path.normalize(f)));
+      const allFiles = await workspace.listFilesSafe();
+      for (const relFile of allFiles) {
+        const norm = path.normalize(relFile);
+        if (!stagedSet.has(norm)) {
+          const fullWorkspaceFilePath = path.join(workspace.workspaceDir, relFile);
+          try {
+            if (fs.existsSync(fullWorkspaceFilePath)) {
+              fs.unlinkSync(fullWorkspaceFilePath);
+            }
+          } catch {
+            // ignore cleanup error
+          }
+        }
+      }
+    }
 
     // 2. Discover
     const discoveryEngine = new DiscoveryEngine();

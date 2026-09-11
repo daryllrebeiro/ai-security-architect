@@ -11,6 +11,7 @@ export interface CliScanOptions {
   withCloud?: boolean;
   region?: string;
   silent?: boolean;
+  staged?: boolean;
 }
 
 export interface CliRemediateOptions {

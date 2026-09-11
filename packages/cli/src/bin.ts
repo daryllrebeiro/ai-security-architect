@@ -40,6 +40,7 @@ async function main() {
     const tenantId = tenantArg ? tenantArg.split('=')[1] : 'tenant-default';
 
     const withCloud = args.includes('--with-cloud');
+    const staged = args.includes('--staged');
     const regionArg = args.find((a) => a.startsWith('--region='));
     const region = regionArg ? regionArg.split('=')[1] : undefined;
 
@@ -49,6 +50,7 @@ async function main() {
       tenantId,
       withCloud,
       region,
+      staged,
     });
   } else if (command === 'remediate') {
     const targetPath = args[1] || '.';

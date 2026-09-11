@@ -9,6 +9,7 @@ export interface AttackPathAnalysisOptions {
   entryPointAssetTypes?: string[];
   targetAssetTypes?: string[];
   minRiskThreshold?: number;
+  memoizeReachability?: boolean;
 }
 
 export interface AttackPathAnalysisResult {

@@ -9,6 +9,49 @@ import type { SecurityGraphEngine, GraphEdge } from '@ai-security-architect/grap
 import type { AttackPathAnalysisOptions } from './types.js';
 
 export class AttackPathEngine {
+  private readonly reachabilityMemo = new Map<string, boolean>();
+  private memoStats = { cacheHits: 0, cacheMisses: 0, prunedPairs: 0 };
+
+  public clearMemoization(): void {
+    this.reachabilityMemo.clear();
+    this.memoStats = { cacheHits: 0, cacheMisses: 0, prunedPairs: 0 };
+  }
+
+  public getMemoizationStats() {
+    return { ...this.memoStats };
+  }
+
+  public isReachable(graph: SecurityGraphEngine, sourceId: string, targetId: string): boolean {
+    const key = `${sourceId}->${targetId}`;
+    if (this.reachabilityMemo.has(key)) {
+      this.memoStats.cacheHits++;
+      return this.reachabilityMemo.get(key)!;
+    }
+    this.memoStats.cacheMisses++;
+
+    const visited = new Set<string>([sourceId]);
+    const queue: string[] = [sourceId];
+    let reachable = false;
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (current === targetId) {
+        reachable = true;
+        break;
+      }
+
+      for (const edge of graph.getOutgoingEdges(current)) {
+        if (!visited.has(edge.targetAssetId)) {
+          visited.add(edge.targetAssetId);
+          queue.push(edge.targetAssetId);
+        }
+      }
+    }
+
+    this.reachabilityMemo.set(key, reachable);
+    return reachable;
+  }
+
   public findEntryPoints(graph: SecurityGraphEngine): Asset[] {
     return graph
       .getAllNodes()
@@ -43,6 +86,13 @@ export class AttackPathEngine {
     for (const entry of entryPoints) {
       for (const target of targets) {
         if (entry.id === target.id) continue;
+
+        if (options.memoizeReachability !== false) {
+          if (!this.isReachable(graph, entry.id, target.id)) {
+            this.memoStats.prunedPairs++;
+            continue;
+          }
+        }
 
         const rawPaths = graph.findAllPaths(entry.id, target.id, { maxDepth });
 

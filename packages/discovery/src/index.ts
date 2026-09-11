@@ -7,3 +7,4 @@ export * from './extractors/dependency-extractor.js';
 export * from './discovery-engine.js';
 export * from './provenance/index.js';
 export * from './secrets-lifecycle/index.js';
+export * from './plugin-registry.js';
