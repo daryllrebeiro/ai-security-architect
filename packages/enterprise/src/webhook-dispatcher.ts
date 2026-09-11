@@ -12,21 +12,108 @@ export interface HttpResponse {
 
 export type HttpTransport = (url: string, init: RequestInit) => Promise<HttpResponse>;
 
+export interface WebhookSsrfOptions {
+  allowLocalhost?: boolean;
+  allowPrivateIps?: boolean;
+}
+
+export function validateWebhookUrl(
+  urlString: string,
+  options: WebhookSsrfOptions = {}
+): { allowed: boolean; reason?: string } {
+  let url: URL;
+  try {
+    url = new URL(urlString);
+  } catch {
+    return { allowed: false, reason: `Invalid URL: ${urlString}` };
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return { allowed: false, reason: `Forbidden protocol: ${url.protocol} (only http and https permitted)` };
+  }
+
+  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+
+  // Block Cloud Metadata endpoints
+  const metadataHosts = ['instance-data', 'metadata.google.internal', 'metadata.internal', '169.254.169.254', 'fd00:ec2::254'];
+  if (metadataHosts.includes(hostname)) {
+    return { allowed: false, reason: `Access to Cloud Instance Metadata Service (${hostname}) is strictly prohibited` };
+  }
+
+  // Block localhost & loopbacks unless allowed
+  if (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname === '127.0.0.1' ||
+    hostname === '0.0.0.0' ||
+    hostname === '::1' ||
+    hostname === '::'
+  ) {
+    if (!options.allowLocalhost) {
+      return { allowed: false, reason: `Access to loopback/localhost (${hostname}) is prohibited` };
+    }
+  }
+
+  // IPv4 checks
+  const ipv4Match = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(hostname);
+  if (ipv4Match) {
+    const octets = [
+      Number(ipv4Match[1]),
+      Number(ipv4Match[2]),
+      Number(ipv4Match[3]),
+      Number(ipv4Match[4]),
+    ];
+
+    // Link-local / AWS IMDS (169.254.0.0/16)
+    if (octets[0] === 169 && octets[1] === 254) {
+      return { allowed: false, reason: `Access to link-local IP ${hostname} is prohibited` };
+    }
+
+    // Loopback (127.0.0.0/8 or 0.0.0.0)
+    if (octets[0] === 127 || (octets[0] === 0 && octets[1] === 0 && octets[2] === 0 && octets[3] === 0)) {
+      if (!options.allowLocalhost) {
+        return { allowed: false, reason: `Access to loopback IP ${hostname} is prohibited` };
+      }
+    }
+
+    // RFC 1918 private ranges:
+    // 10.0.0.0 - 10.255.255.255
+    // 172.16.0.0 - 172.31.255.255
+    // 192.168.0.0 - 192.168.255.255
+    const isPrivate =
+      octets[0] === 10 ||
+      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+      (octets[0] === 192 && octets[1] === 168);
+
+    if (isPrivate && !options.allowPrivateIps) {
+      return { allowed: false, reason: `Access to RFC 1918 private IP ${hostname} is prohibited without explicit permission` };
+    }
+  }
+
+  return { allowed: true };
+}
+
 export interface WebhookDispatcherOptions {
   transport?: HttpTransport;
   maxRetries?: number;
   baseBackoffMs?: number;
+  allowLocalhost?: boolean;
+  allowPrivateIps?: boolean;
 }
 
 export class WebhookDispatcher {
   private readonly transport: HttpTransport;
   private readonly maxRetries: number;
   private readonly baseBackoffMs: number;
+  private readonly allowLocalhost: boolean;
+  private readonly allowPrivateIps: boolean;
 
   constructor(options: WebhookDispatcherOptions = {}) {
     this.transport = options.transport ?? ((url, init) => fetch(url, init));
     this.maxRetries = options.maxRetries ?? 3;
     this.baseBackoffMs = options.baseBackoffMs ?? 200;
+    this.allowLocalhost = options.allowLocalhost ?? false;
+    this.allowPrivateIps = options.allowPrivateIps ?? false;
   }
 
   public redactUrl(url: string): string {
@@ -210,6 +297,21 @@ export class WebhookDispatcher {
         success: false,
         attempts: 0,
         error: `Risk score ${payload.riskScore} below threshold ${destination.minRiskThreshold}`,
+        timestamp,
+      };
+    }
+
+    const ssrfCheck = validateWebhookUrl(destination.url, {
+      allowLocalhost: this.allowLocalhost,
+      allowPrivateIps: this.allowPrivateIps,
+    });
+    if (!ssrfCheck.allowed) {
+      return {
+        destinationId: destination.id,
+        destinationType: destination.type,
+        success: false,
+        attempts: 0,
+        error: `SSRF Blocked: ${ssrfCheck.reason}`,
         timestamp,
       };
     }

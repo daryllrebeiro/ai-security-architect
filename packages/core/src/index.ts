@@ -4,3 +4,4 @@ export * from './domain/evidence.js';
 export * from './domain/finding.js';
 export * from './domain/attack-path.js';
 export * from './domain/ai-contract.js';
+export * from './logger.js';

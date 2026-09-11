@@ -40,13 +40,29 @@ export class SqliteGraphStore implements GraphStore {
 
   constructor(tenantId: string = 'default-tenant', dbPath: string = ':memory:') {
     this.tenantId = tenantId;
-    this.db = new Database(dbPath);
+    this.db = new Database(dbPath, {
+      timeout: 10000,
+    });
+
+    this.db.pragma('busy_timeout = 10000');
+    this.db.pragma('foreign_keys = ON');
 
     if (dbPath !== ':memory:') {
       this.db.pragma('journal_mode = WAL');
+      this.db.pragma('synchronous = NORMAL');
+      this.db.pragma('temp_store = MEMORY');
     }
 
     this.db.exec(`
+      CREATE TABLE IF NOT EXISTS _schema_migrations (
+        version INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        applied_at TEXT NOT NULL
+      );
+
+      INSERT OR IGNORE INTO _schema_migrations (version, name, applied_at)
+      VALUES (1, 'initial_graph_schema_v1', datetime('now'));
+
       CREATE TABLE IF NOT EXISTS nodes (
         id TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL,
