@@ -28,6 +28,7 @@ export const AssetTypeSchema = z.enum([
   'LOG_AGGREGATOR',
   'MESSAGE_BROKER',
   'WAREHOUSE',
+  'VENDOR',
 ]);
 
 export type AssetType = z.infer<typeof AssetTypeSchema>;

@@ -19,6 +19,11 @@ export const FindingCategorySchema = z.enum([
   'SUPPLY_CHAIN_INTEGRITY',
   'DATA_LINEAGE_EXPOSURE',
   'INFRASTRUCTURE_ANOMALY',
+  'CREDENTIAL_ROTATION_OVERDUE',
+  'COMPROMISED_CREDENTIAL',
+  'MODEL_DISAGREEMENT',
+  'THIRD_PARTY_VENDOR_RISK',
+  'ORPHANED_RESOURCE',
 ]);
 
 export type FindingCategory = z.infer<typeof FindingCategorySchema>;
