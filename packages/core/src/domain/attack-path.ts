@@ -9,6 +9,8 @@ export const AttackStepSchema = z.object({
   findingId: z.string().optional(),
   evidenceRef: z.string().optional(),
   explanation: z.string(),
+  isCrossBoundaryRedacted: z.boolean().optional(),
+  redactedScope: z.string().optional(),
 });
 
 export type AttackStep = z.infer<typeof AttackStepSchema>;
@@ -66,6 +68,21 @@ export const AttackPathSchema = z.object({
   verifiedEliminated: z.boolean().default(false),
   fingerprint: z.string().optional(),
   isSimulation: z.boolean().optional(),
+  isWhatIf: z.boolean().optional(),
+  whatIfContext: z
+    .object({
+      hypothesisId: z.string(),
+      description: z.string(),
+    })
+    .optional(),
+  threatIntelContext: z
+    .object({
+      isKevExploited: z.boolean().optional(),
+      epssScore: z.number().optional(),
+      cisaDueDate: z.string().optional(),
+      explanation: z.string().optional(),
+    })
+    .optional(),
   simulationContext: z
     .object({
       rootAssetId: z.string(),

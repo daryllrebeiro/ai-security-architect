@@ -19,6 +19,10 @@ export const RelationshipTypeSchema = z.enum([
   'CAN_WRITE',
   'CAN_ADMIN',
   'REACHES',
+  'BUILT_FROM',
+  'DEPLOYED_AS',
+  'HOSTED_ON',
+  'DATA_FLOW',
 ]);
 
 export type RelationshipType = z.infer<typeof RelationshipTypeSchema>;

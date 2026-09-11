@@ -16,6 +16,9 @@ export const FindingCategorySchema = z.enum([
   'UNRESOLVED_REFERENCE',
   'CLOUD_DRIFT',
   'SHADOW_RESOURCE',
+  'SUPPLY_CHAIN_INTEGRITY',
+  'DATA_LINEAGE_EXPOSURE',
+  'INFRASTRUCTURE_ANOMALY',
 ]);
 
 export type FindingCategory = z.infer<typeof FindingCategorySchema>;
