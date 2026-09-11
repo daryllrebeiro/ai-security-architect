@@ -1,0 +1,70 @@
+{
+  "framework": "NIST-800-53",
+  "name": "NIST Special Publication 800-53 Revision 5 (Moderate Baseline)",
+  "version": "Rev-5-Moderate",
+  "controls": [
+    {
+      "controlId": "NIST-AC-3",
+      "title": "Access Enforcement & Least Privilege",
+      "description": "The information system enforces approved authorizations for logical access to information and system resources.",
+      "observableByTool": true,
+      "findingCategories": ["IAM_OVERPRIVILEGE", "SECRET_EXPOSURE"],
+      "attackPathPattern": "PERMISSIVE_IAM_OR_CREDENTIAL",
+      "mappingRationale": "Verifies that IAM permissions and workload identities restrict access to minimum necessary resources."
+    },
+    {
+      "controlId": "NIST-AC-4",
+      "title": "Information Flow Enforcement & Segmentation",
+      "description": "The information system enforces approved authorizations for controlling the flow of information within the system and interconnected systems.",
+      "observableByTool": true,
+      "findingCategories": ["PUBLIC_EXPOSURE", "SSRF"],
+      "attackPathPattern": "INTERNET_INGRESS_TO_INTERNAL",
+      "mappingRationale": "Verifies traffic boundaries, VPC peering controls, and ingress boundaries protecting sensitive backend enclaves."
+    },
+    {
+      "controlId": "NIST-AC-6",
+      "title": "Least Privilege & Privilege Escalation Prevention",
+      "description": "The organization employs the principle of least privilege, allowing only authorized accesses for users and processes.",
+      "observableByTool": true,
+      "findingCategories": ["KUBERNETES_PRIVILEGE_ESCALATION", "CONTAINER_MISCONFIGURATION"],
+      "attackPathPattern": null,
+      "mappingRationale": "Detects root containers, privileged pods, and Docker daemon socket mount vectors."
+    },
+    {
+      "controlId": "NIST-SC-7",
+      "title": "Boundary Protection & Demilitarized Zones",
+      "description": "The information system monitors and controls communications at external boundaries and key internal boundaries.",
+      "observableByTool": true,
+      "findingCategories": ["PUBLIC_EXPOSURE", "INSECURE_COMMUNICATION"],
+      "attackPathPattern": null,
+      "mappingRationale": "Evaluates public security groups, open ports, and unencrypted ingress pathways."
+    },
+    {
+      "controlId": "NIST-SI-2",
+      "title": "Flaw Remediation & Known Vulnerability Patching",
+      "description": "The organization identifies, reports, and corrects system flaws and installed third-party software flaws.",
+      "observableByTool": true,
+      "findingCategories": ["VULNERABLE_DEPENDENCY", "REMOTE_CODE_EXECUTION", "SQL_INJECTION"],
+      "attackPathPattern": null,
+      "mappingRationale": "Detects known software vulnerabilities and critical CVE advisories in application dependencies."
+    },
+    {
+      "controlId": "NIST-PE-2",
+      "title": "Physical Access Authorizations",
+      "description": "The organization develops, approves, and maintains a list of individuals with authorized physical access to the facility.",
+      "observableByTool": false,
+      "findingCategories": [],
+      "attackPathPattern": null,
+      "mappingRationale": "NOT OBSERVABLE: Physical access badge readers and facility entry logs cannot be verified from code or cloud architecture."
+    },
+    {
+      "controlId": "NIST-PS-3",
+      "title": "Personnel Screening & Background Checks",
+      "description": "The organization screens individuals prior to authorizing access to the system.",
+      "observableByTool": false,
+      "findingCategories": [],
+      "attackPathPattern": null,
+      "mappingRationale": "NOT OBSERVABLE: Employee criminal background checks and drug screenings are HR business processes."
+    }
+  ]
+}

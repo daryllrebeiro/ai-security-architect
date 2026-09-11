@@ -1,0 +1,70 @@
+{
+  "framework": "PCI-DSS",
+  "name": "Payment Card Industry Data Security Standard (PCI-DSS)",
+  "version": "v4.0.1",
+  "controls": [
+    {
+      "controlId": "PCI-Req-1.2",
+      "title": "Network Security Controls & Boundary Configuration",
+      "description": "Network security controls (NSCs) are configured and maintained to restrict traffic between untrusted and trusted networks.",
+      "observableByTool": true,
+      "findingCategories": ["PUBLIC_EXPOSURE", "SSRF"],
+      "attackPathPattern": "INTERNET_INGRESS_TO_INTERNAL",
+      "mappingRationale": "Verifies that ingress points cannot route directly into cardholder data environments without firewall / ALB boundary controls."
+    },
+    {
+      "controlId": "PCI-Req-1.3",
+      "title": "Direct Public Access to Cardholder Data Prohibited",
+      "description": "Direct public access between the internet and any system in the cardholder data environment (CDE) is prohibited.",
+      "observableByTool": true,
+      "findingCategories": ["PUBLIC_EXPOSURE"],
+      "attackPathPattern": "DIRECT_INTERNET_TO_CROWN_JEWEL",
+      "mappingRationale": "Detects any public S3 bucket, exposed database, or direct ingress into assets classified as containing payment data."
+    },
+    {
+      "controlId": "PCI-Req-6.4",
+      "title": "Public-Facing Web Applications Protected Against Attacks",
+      "description": "Public-facing web applications are protected against attacks, including injection and SSRF.",
+      "observableByTool": true,
+      "findingCategories": ["SSRF", "SQL_INJECTION", "REMOTE_CODE_EXECUTION"],
+      "attackPathPattern": null,
+      "mappingRationale": "Inspects endpoints and web workloads for OWASP Top 10 vulnerabilities including SSRF and SQL injection."
+    },
+    {
+      "controlId": "PCI-Req-7.2",
+      "title": "Least Privilege Access Control to Cardholder Data",
+      "description": "Access to system components and data is appropriately segregated and defined by least privilege.",
+      "observableByTool": true,
+      "findingCategories": ["IAM_OVERPRIVILEGE"],
+      "attackPathPattern": null,
+      "mappingRationale": "Checks for wildcard IAM grants (*:* or s3:*) allowing broad read/write access to sensitive storage."
+    },
+    {
+      "controlId": "PCI-Req-8.2",
+      "title": "Identification & Authentication Credentials Managed",
+      "description": "User and system authentication credentials and secrets are securely generated, stored, and managed.",
+      "observableByTool": true,
+      "findingCategories": ["SECRET_EXPOSURE"],
+      "attackPathPattern": null,
+      "mappingRationale": "Flags plaintext API keys, database credentials, or private signing keys hardcoded in source code or IaC."
+    },
+    {
+      "controlId": "PCI-Req-9.1",
+      "title": "Physical Security Controls at Facility Entrances",
+      "description": "Physical security controls prevent unauthorized physical access to systems containing cardholder data.",
+      "observableByTool": false,
+      "findingCategories": [],
+      "attackPathPattern": null,
+      "mappingRationale": "NOT OBSERVABLE: Data center cage locks, visitor logs, and video surveillance systems cannot be inspected by static code/graph analysis."
+    },
+    {
+      "controlId": "PCI-Req-12.7",
+      "title": "Personnel Screening & Background Inquiries",
+      "description": "Personnel with access to the CDE are screened prior to hire to reduce the risk of insider threats.",
+      "observableByTool": false,
+      "findingCategories": [],
+      "attackPathPattern": null,
+      "mappingRationale": "NOT OBSERVABLE: Background checks and employment history verification are administrative HR functions."
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "framework": "SOC2",
+  "name": "SOC 2 Type II Trust Services Criteria (Security)",
+  "version": "2017-revised",
+  "controls": [
+    {
+      "controlId": "SOC2-CC6.1",
+      "title": "Logical Access Controls & Least Privilege",
+      "description": "The entity restricts logical access to registered, authorized identities and workloads.",
+      "observableByTool": true,
+      "findingCategories": ["IAM_OVERPRIVILEGE", "SECRET_EXPOSURE"],
+      "attackPathPattern": "PERMISSIVE_IAM_OR_CREDENTIAL",
+      "mappingRationale": "Verifies IAM role boundaries, service account trust policies, and hardcoded credential exposure."
+    },
+    {
+      "controlId": "SOC2-CC6.6",
+      "title": "Boundary Protection & Network Segmentation",
+      "description": "Logical boundaries are implemented to protect internal networks and sensitive assets from external ingress.",
+      "observableByTool": true,
+      "findingCategories": ["PUBLIC_EXPOSURE", "SSRF"],
+      "attackPathPattern": "INTERNET_INGRESS_TO_INTERNAL",
+      "mappingRationale": "Verifies that ingress load balancers and APIs enforce segmentation and do not expose unauthenticated paths to internal databases or compute."
+    },
+    {
+      "controlId": "SOC2-CC6.7",
+      "title": "Transmission Data Protection & In-Transit Encryption",
+      "description": "The entity restricts the transmission, movement, and transfer of data across communication boundaries.",
+      "observableByTool": true,
+      "findingCategories": ["INSECURE_COMMUNICATION"],
+      "attackPathPattern": null,
+      "mappingRationale": "Detects unencrypted HTTP, plaintext database communication, or cleartext RPC traffic."
+    },
+    {
+      "controlId": "SOC2-CC6.8",
+      "title": "Vulnerability Management & Malicious Software Prevention",
+      "description": "The entity detects, assesses, and remediates vulnerabilities in workloads and applications.",
+      "observableByTool": true,
+      "findingCategories": ["VULNERABLE_DEPENDENCY", "REMOTE_CODE_EXECUTION", "SQL_INJECTION"],
+      "attackPathPattern": null,
+      "mappingRationale": "Identifies CVE advisories in third-party libraries and code execution / SQL injection injection flaws."
+    },
+    {
+      "controlId": "SOC2-CC7.1",
+      "title": "Vulnerability Detection & Security Event Monitoring",
+      "description": "The entity uses vulnerability detection infrastructure to monitor system components for exposures.",
+      "observableByTool": true,
+      "findingCategories": ["CONTAINER_MISCONFIGURATION", "KUBERNETES_PRIVILEGE_ESCALATION"],
+      "attackPathPattern": null,
+      "mappingRationale": "Analyzes Kubernetes pods, securityContext configurations, and root privilege escalation vectors."
+    },
+    {
+      "controlId": "SOC2-CC6.4",
+      "title": "Physical Perimeter Security",
+      "description": "Physical access to facilities housing IT infrastructure and data center assets is restricted.",
+      "observableByTool": false,
+      "findingCategories": [],
+      "attackPathPattern": null,
+      "mappingRationale": "NOT OBSERVABLE: Physical security badges, security guards, and biometrics cannot be evaluated from code or cloud topology."
+    },
+    {
+      "controlId": "SOC2-CC2.1",
+      "title": "HR Background Checks & Employee Onboarding",
+      "description": "Background checks and screening are conducted for personnel prior to employment.",
+      "observableByTool": false,
+      "findingCategories": [],
+      "attackPathPattern": null,
+      "mappingRationale": "NOT OBSERVABLE: HR recruitment, hiring verification, and background checks are out of scope for architectural security scanners."
+    },
+    {
+      "controlId": "SOC2-CC9.2",
+      "title": "Vendor & Third-Party Risk Management",
+      "description": "The entity assesses and manages risks associated with vendors and business partners.",
+      "observableByTool": false,
+      "findingCategories": [],
+      "attackPathPattern": null,
+      "mappingRationale": "NOT OBSERVABLE: Vendor contracts, SLAs, and third-party audit reports require administrative procurement review."
+    }
+  ]
+}
