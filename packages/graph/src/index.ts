@@ -10,3 +10,4 @@ export * from './diff/scan-history-store.js';
 export * from './diff/pr-comment-formatter.js';
 export * from './data-lineage/index.js';
 export * from './anomaly-detection/index.js';
+export * from './vendor-risk/index.js';
