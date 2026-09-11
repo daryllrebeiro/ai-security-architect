@@ -323,6 +323,7 @@ CORE COMMANDS:
                              --tenant=<id>                 Tenant identifier
                              --with-cloud                  Correlate live AWS cloud runtime state & drift
                              --region=<region>             AWS region (default: us-east-1)
+                             --staged                      Scan only uncommitted git index diffs for fast pre-commit hooks
 
   remediate <path>         Synthesize AI remediation patch with closed-loop verification
                            Options:

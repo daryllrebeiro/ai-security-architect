@@ -231,3 +231,22 @@ features:
     enabled: false
     dormancyWindowDays: 90
 
+  # Strategic Roadmap Phase 3 Capabilities
+  ebpfCorrelator:
+    enabled: false
+    confidenceThreshold: 0.8
+    suggestContainment: true
+
+  prBot:
+    enabled: false
+    authorName: "AI Security Architect"
+    signOff: true
+
+  multiAgentArbitrator:
+    enabled: false
+    weights:
+      securityEfficacy: 1.5
+      blastRadiusPenalty: 1.0
+      frictionPenalty: 0.8
+
+
