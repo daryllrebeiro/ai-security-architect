@@ -1,5 +1,5 @@
 {
-  "name": "@ai-security-architect/graph",
+  "name": "@ai-security-architect/policy",
   "version": "0.1.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -16,15 +16,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-security-architect/analyzers": "*",
     "@ai-security-architect/core": "*",
-    "@ai-security-architect/discovery": "*",
-    "@ai-security-architect/ingestion": "*",
-    "better-sqlite3": "^13.0.3",
+    "@ai-security-architect/graph": "*",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.5.4"
   }

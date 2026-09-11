@@ -74,7 +74,11 @@ export class AttackPathEngine {
     return attackPaths;
   }
 
-  private buildAttackSteps(graph: SecurityGraphEngine, edges: GraphEdge[]): AttackStep[] {
+  public filterProductionAlertablePaths(paths: AttackPath[]): AttackPath[] {
+    return paths.filter((p) => !p.isSimulation);
+  }
+
+  public buildAttackSteps(graph: SecurityGraphEngine, edges: GraphEdge[]): AttackStep[] {
     const steps: AttackStep[] = [];
 
     for (let i = 0; i < edges.length; i++) {
@@ -93,6 +97,12 @@ export class AttackPathEngine {
         explanation = `Public internet traffic accesses exposed ingress endpoint on ${targetName}`;
       } else if (edge.type === 'ROUTES_TO') {
         explanation = `Ingress load balancer forwards traffic to backend ${targetName}`;
+      } else if (edge.type === 'DEPENDS_ON') {
+        explanation = `Workload ${sourceName} imports software dependency ${targetName}`;
+      } else if (edge.type === 'COMPROMISES') {
+        explanation = `Exploitation of vulnerability in ${sourceName} grants remote code execution within workload context ${targetName}${
+          matchingFinding ? ` (${matchingFinding.title})` : ''
+        }`;
       } else if (edge.type === 'DEPLOYED_TO') {
         explanation = `Workload execution context runs within container/pod ${targetName}`;
       } else if (edge.type === 'RUNS_AS') {
@@ -119,7 +129,7 @@ export class AttackPathEngine {
     return steps;
   }
 
-  private calculatePathRisk(
+  public calculatePathRisk(
     graph: SecurityGraphEngine,
     edges: GraphEdge[],
     entry: Asset,
