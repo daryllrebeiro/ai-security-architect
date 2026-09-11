@@ -4,3 +4,4 @@ export * from './min-cut-optimizer.js';
 export * from './flow-network.js';
 export * from './simulation/index.js';
 export * from './what-if/index.js';
+export * from './formal-verification/index.js';
