@@ -1,0 +1,24 @@
+# ==============================================================================
+# Replit Native Deployment & Process Supervision Configuration
+# Target: Free-Tier Autoscale Engine (ai-security-architect)
+# ==============================================================================
+
+modules = ["nodejs-20"]
+run = "bash scripts/replit_start.sh"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+deploymentTarget = "autoscale"
+build = ["bash", "scripts/replit_build.sh"]
+run = ["bash", "scripts/replit_start.sh"]
+
+[[ports]]
+localPort = 8080
+externalPort = 80
+
+[env]
+PORT = "8080"
+NODE_ENV = "production"
+SEC_ARCH_FREE_TIER_ENFORCED = "true"

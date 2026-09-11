@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "start": "node server.js",
     "build": "npm run --workspaces --if-present build",
     "test": "vitest run",
     "test:watch": "vitest",

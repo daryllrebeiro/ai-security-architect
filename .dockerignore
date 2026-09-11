@@ -1,0 +1,11 @@
+node_modules
+.git
+.github
+deploy-history
+*.log
+.sec-arch
+.scan-job-store
+dist
+coverage
+.DS_Store
+Thumbs.db
